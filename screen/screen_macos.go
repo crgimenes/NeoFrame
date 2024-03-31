@@ -3,127 +3,122 @@ package screen
 /*
 #cgo CFLAGS: -x objective-c
 #cgo LDFLAGS: -framework Cocoa
-
 #import <Cocoa/Cocoa.h>
 
-@interface FloatingImageWindow : NSWindow
-@end
-
-@implementation FloatingImageWindow
-
-- (BOOL)canBecomeKeyWindow {
-    return YES;
-}
-
-- (BOOL)canBecomeMainWindow {
-    return YES;
-}
-
-- (void)mouseDown:(NSEvent *)event {
-	// TODO: implementar um modo de sair do programa se o usuário não conseguir ver a tela
-	NSLog(@"Mouse down");
-	[super mouseDown:event];
-}
-
-- (instancetype)initWithContentRect:(NSRect)contentRect {
-    self = [super initWithContentRect:contentRect
-                            styleMask:NSWindowStyleMaskBorderless
-                              backing:NSBackingStoreBuffered
-                                defer:NO];
-    if (self) {
-        [self setOpaque:NO];
-        [self setBackgroundColor:[NSColor clearColor]];
-        [self setLevel:NSFloatingWindowLevel];
-        [self setCollectionBehavior:NSWindowCollectionBehaviorCanJoinAllSpaces];
-		[self setIgnoresMouseEvents:YES]; // TODO: adicionar parametro para que seja opcional
-	}
-    return self;
-}
-
-- (BOOL)isMovableByWindowBackground {
-    return YES;
-}
-
-@end
-
-FloatingImageWindow *window;
+NSWindow *window;
 
 NSSize getScreenSize() {
 	NSRect screenRect = [[NSScreen mainScreen] frame];
 	return screenRect.size;
 }
 
-void showFloatingImageWindow(const char *imageData, int dataSize, int xPosition, int yPosition) {
-    NSData *data = [NSData dataWithBytes:imageData length:dataSize];
-    NSImage *image = [[NSImage alloc] initWithData:data];
-    if (!image) {
-        NSLog(@"Failed to load image");
-        return;
+void runApp() {
+    @autoreleasepool {
+		NSSize screenSize = getScreenSize();
+        [NSApplication sharedApplication];
+        window = [[NSWindow alloc] initWithContentRect:NSMakeRect(
+			0,
+			0,
+			screenSize.width,
+			screenSize.height)
+		styleMask:NSWindowStyleMaskBorderless
+		backing:NSBackingStoreBuffered
+		defer:NO];
+
+		[window setOpaque:NO];
+		[window setBackgroundColor:[NSColor clearColor]];
+		[window setLevel:NSFloatingWindowLevel];
+		[window setCollectionBehavior:NSWindowCollectionBehaviorCanJoinAllSpaces];
+		[window setIgnoresMouseEvents:YES];
+        [window makeKeyAndOrderFront:nil];
+        [NSApp run];
     }
-
-    //NSSize imageSize = [image size];
-	NSSize ws = getScreenSize();
-    NSRect windowRect = NSMakeRect(xPosition, yPosition, ws.width, ws.height);
-
-    NSApplication *application = [NSApplication sharedApplication];
-    window = [[FloatingImageWindow alloc] initWithContentRect:windowRect];
-
-    NSImageView *imageView = [[NSImageView alloc] initWithFrame:window.contentView.bounds];
-    [imageView setImage:image];
-    //[imageView setImageScaling:NSImageScaleProportionallyUpOrDown];
-	[window setContentView:imageView];
-
-    [window makeKeyAndOrderFront:nil];
-    [application run];
 }
 
-void changeImage(FloatingImageWindow *window, const char *imageData, int dataSize) {
-	NSData *data = [NSData dataWithBytes:imageData length:dataSize];
-	NSImage *image = [[NSImage alloc] initWithData:data];
-	if (!image) {
-		NSLog(@"Failed to load image");
-		return;
+void setBackgroudImage(const char *path) {
+	@autoreleasepool {
+		NSImageView *imageView;
+		// if there is a image view already, reuse it
+		if ([[[window contentView] subviews] count] > 0) {
+			imageView = [[[window contentView] subviews] objectAtIndex:0];
+		} else {
+			imageView = [[NSImageView alloc] initWithFrame:[[window contentView] frame]];
+			dispatch_async(dispatch_get_main_queue(), ^{
+				[[window contentView] addSubview:imageView];
+			});
+		}
+
+		NSString *imagePath = [NSString stringWithUTF8String:path];
+		NSImage *image = [[NSImage alloc] initWithContentsOfFile:imagePath];
+		[imageView setImage:image];
 	}
-
-	NSSize ws = getScreenSize();
-	NSRect windowRect = NSMakeRect(
-		window.frame.origin.x,
-		window.frame.origin.y,
-		ws.width,
-		ws.height);
-
-	NSImageView *imageView = [[NSImageView alloc] initWithFrame:window.contentView.bounds];
-	[imageView setImage:image];
-	//[imageView setImageScaling:NSImageScaleProportionallyUpOrDown]
-	[window setContentView:imageView];
 }
 
-void changeImageOnMainThread(const char *imageData, int dataSize) {
-	dispatch_async(dispatch_get_main_queue(), ^{
-		changeImage(window, imageData, dataSize);
-	});
+// set the background image by RGBA array data
+void setBackgroudImageByData(unsigned char *data, int width, int height) {
+	@autoreleasepool {
+		NSImageView *imageView;
+		// if there is a image view already, reuse it
+		if ([[[window contentView] subviews] count] > 0) {
+			imageView = [[[window contentView] subviews] objectAtIndex:0];
+		} else {
+			imageView = [[NSImageView alloc] initWithFrame:[[window contentView] frame]];
+			dispatch_async(dispatch_get_main_queue(), ^{
+				[[window contentView] addSubview:imageView];
+			});
+		}
+
+		NSBitmapImageRep *bitmap = [[NSBitmapImageRep alloc] initWithBitmapDataPlanes:NULL
+			pixelsWide:width
+			pixelsHigh:height
+			bitsPerSample:8
+			samplesPerPixel:4
+			hasAlpha:YES
+			isPlanar:NO
+			colorSpaceName:NSCalibratedRGBColorSpace
+			bytesPerRow:width * 4
+			bitsPerPixel:32];
+
+		unsigned char *bitmapData = [bitmap bitmapData];
+		memcpy(bitmapData, data, width * height * 4);
+
+		NSImage *image = [[NSImage alloc] init];
+		[image addRepresentation:bitmap];
+		[imageView setImage:image];
+	}
 }
+
+void clean() {
+	@autoreleasepool {
+		dispatch_async(dispatch_get_main_queue(), ^{
+			[[[window contentView] subviews] makeObjectsPerformSelector:@selector(removeFromSuperview)];
+		});
+	}
+}
+
 
 */
 import "C"
 
-func ShowMainWindow(imageData []byte) {
-	C.showFloatingImageWindow(
-		(*C.char)(C.CBytes(imageData)),
-		C.int(len(imageData)),
-		C.int(0),
-		C.int(0),
-	)
+func SetBackgroudImage(path string) {
+	C.setBackgroudImage(C.CString(path))
 }
 
-func ChangeImage(imageData []byte) {
-	C.changeImageOnMainThread(
-		(*C.char)(C.CBytes(imageData)),
-		C.int(len(imageData)),
-	)
-}
-
-func GetScreenSize() (int, int) {
+func GetScreenSize() (width, height int) {
 	screenSize := C.getScreenSize()
-	return int(screenSize.width), int(screenSize.height)
+	width = int(screenSize.width)
+	height = int(screenSize.height)
+	return
+}
+
+func SetBackgroudImageByData(data []byte, width, height int) {
+	C.setBackgroudImageByData((*C.uchar)(&data[0]), C.int(width), C.int(height))
+}
+
+func Clean() {
+	C.clean()
+}
+
+func RunApp() {
+	C.runApp()
 }

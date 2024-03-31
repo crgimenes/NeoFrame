@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"image"
 	"io"
 	"net"
 	"nf/config"
@@ -57,15 +58,15 @@ func handleConnection(conn net.Conn) {
 
 		switch cmd[0] {
 		case "shutdown":
-			if !config.CFG.Silent {
-				fmt.Println("Shutdown server")
-			}
 			_, err = conn.Write([]byte("shutdown server"))
 			if err != nil {
 				fmt.Println("failed to write:", err)
 				shutdown(1)
 			}
 			shutdown(0)
+		case "test":
+			screen.SetBackgroudImage("./awake.png")
+		case "clear":
 		default:
 			e := fmt.Sprintf("Unknown command: %s", buf[:n])
 			if !config.CFG.Silent {
@@ -78,6 +79,7 @@ func handleConnection(conn net.Conn) {
 			}
 			continue
 		}
+
 		_, err = conn.Write([]byte("OK"))
 		if err != nil {
 			fmt.Println("failed to write:", err)
@@ -116,13 +118,7 @@ func UDSCientClose(conn net.Conn) {
 	conn.Close()
 }
 
-func UDSListener() error {
-	_, err := os.Stat(config.CFG.UnixDomainSocket)
-	if err == nil {
-		fmt.Printf("Unix domain socket %s already exists, remove the file first\n", config.CFG.UnixDomainSocket)
-		return err
-	}
-
+func UDSListener() {
 	listener, err := net.Listen("unix", config.CFG.UnixDomainSocket)
 	if err != nil {
 		fmt.Println("failed to listen:", err)
@@ -141,6 +137,19 @@ func UDSListener() error {
 
 		go handleConnection(conn)
 	}
+}
+
+func RGBAImageToBytes(img *image.RGBA) []byte {
+	bounds := img.Bounds()
+	w, h := bounds.Dx(), bounds.Dy()
+	bytes := make([]byte, 0, w*h*4)
+	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
+		for x := bounds.Min.X; x < bounds.Max.X; x++ {
+			r, g, b, a := img.At(x, y).RGBA()
+			bytes = append(bytes, byte(r>>8), byte(g>>8), byte(b>>8), byte(a>>8))
+		}
+	}
+	return bytes
 }
 
 func main() {
@@ -176,15 +185,17 @@ func main() {
 		fmt.Printf("Unix domain socket:\n\t%s\n", config.CFG.UnixDomainSocket)
 		return
 	case config.CFG.ServerMode:
+		_, err := os.Stat(config.CFG.UnixDomainSocket)
+		if err == nil {
+			fmt.Printf("Unix domain socket %s already exists, remove the file first\n", config.CFG.UnixDomainSocket)
+			shutdown(1)
+		}
 		if !config.CFG.Silent {
 			fmt.Println("Server mode")
 			fmt.Println("Unix domain socket:", config.CFG.UnixDomainSocket)
 		}
-		err := UDSListener()
-		if err != nil {
-			fmt.Println("failed to listen:", err)
-			shutdown(1)
-		}
+		go UDSListener()
+		screen.RunApp()
 	case cmd != "":
 		conn := UDSClient()
 		s := UDSClientSend(conn, cmd)
