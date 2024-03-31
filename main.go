@@ -4,12 +4,12 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"log"
 	"net"
 	"nf/config"
 	"nf/screen"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 var (
@@ -22,6 +22,16 @@ func usage() {
 	fmt.Println("Usage: neoframe [options]")
 	fmt.Println("Options:")
 	flag.PrintDefaults()
+}
+
+func shutdown(ret int) {
+	if config.CFG.ServerMode {
+		if !config.CFG.Silent {
+			fmt.Println("Shutdown server")
+		}
+		os.Remove(config.CFG.UnixDomainSocket)
+	}
+	os.Exit(ret)
 }
 
 func handleConnection(conn net.Conn) {
@@ -39,6 +49,40 @@ func handleConnection(conn net.Conn) {
 		}
 
 		fmt.Println("Recebido:", string(buf[:n]))
+
+		// remove duplicate spaces
+		b := strings.Join(strings.Fields(string(buf[:n])), " ")
+
+		cmd := strings.Split(b, " ")
+
+		switch cmd[0] {
+		case "shutdown":
+			if !config.CFG.Silent {
+				fmt.Println("Shutdown server")
+			}
+			_, err = conn.Write([]byte("shutdown server"))
+			if err != nil {
+				fmt.Println("failed to write:", err)
+				shutdown(1)
+			}
+			shutdown(0)
+		default:
+			e := fmt.Sprintf("Unknown command: %s", buf[:n])
+			if !config.CFG.Silent {
+				fmt.Printf(e)
+			}
+			_, err = conn.Write([]byte(e))
+			if err != nil {
+				fmt.Println("failed to write:", err)
+				shutdown(1)
+			}
+			continue
+		}
+		_, err = conn.Write([]byte("OK"))
+		if err != nil {
+			fmt.Println("failed to write:", err)
+			shutdown(1)
+		}
 	}
 }
 
@@ -46,17 +90,26 @@ func UDSClient() net.Conn {
 	conn, err := net.Dial("unix", config.CFG.UnixDomainSocket)
 	if err != nil {
 		fmt.Println("failed to dial:", err)
-		os.Exit(1)
+		shutdown(1)
 	}
 	return conn
 }
 
-func UDSClientSend(conn net.Conn, msg string) {
+func UDSClientSend(conn net.Conn, msg string) string {
 	_, err := conn.Write([]byte(msg))
 	if err != nil {
 		fmt.Println("failed to write:", err)
-		os.Exit(1)
+		shutdown(1)
 	}
+	// read response
+	buf := make([]byte, 1024)
+	n, err := conn.Read(buf)
+	if err != nil {
+		fmt.Println("failed to read:", err)
+		shutdown(1)
+	}
+
+	return string(buf[:n])
 }
 
 func UDSCientClose(conn net.Conn) {
@@ -66,14 +119,14 @@ func UDSCientClose(conn net.Conn) {
 func UDSListener() error {
 	_, err := os.Stat(config.CFG.UnixDomainSocket)
 	if err == nil {
-		log.Printf("Unix domain socket %s already exists, remove the file first\n", config.CFG.UnixDomainSocket)
+		fmt.Printf("Unix domain socket %s already exists, remove the file first\n", config.CFG.UnixDomainSocket)
 		return err
 	}
 
 	listener, err := net.Listen("unix", config.CFG.UnixDomainSocket)
 	if err != nil {
 		fmt.Println("failed to listen:", err)
-		os.Exit(1)
+		shutdown(1)
 	}
 	defer listener.Close()
 
@@ -93,7 +146,6 @@ func UDSListener() error {
 func main() {
 	const tmpDir = "/tmp"
 	uds := filepath.Join(tmpDir, "neoframe.sock")
-
 	var cmd string
 
 	flag.BoolVar(&config.CFG.GetScreenInfo, "info", false, "Get screen size")
@@ -105,6 +157,12 @@ func main() {
 	flag.Usage = usage
 
 	flag.Parse()
+
+	defer func() {
+		if config.CFG.ServerMode {
+			os.Remove(uds)
+		}
+	}()
 
 	switch {
 	case config.CFG.GetScreenInfo:
@@ -124,11 +182,15 @@ func main() {
 		}
 		err := UDSListener()
 		if err != nil {
-			os.Exit(1)
+			fmt.Println("failed to listen:", err)
+			shutdown(1)
 		}
 	case cmd != "":
 		conn := UDSClient()
-		UDSClientSend(conn, cmd)
+		s := UDSClientSend(conn, cmd)
+		if s != "" {
+			fmt.Println(s)
+		}
 		UDSCientClose(conn)
 	default:
 		usage()
