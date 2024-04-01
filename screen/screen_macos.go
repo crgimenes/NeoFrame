@@ -38,15 +38,10 @@ void runApp() {
 void setBackgroudImage(const char *path) {
 	@autoreleasepool {
 		NSImageView *imageView;
-		// if there is a image view already, reuse it
-		if ([[[window contentView] subviews] count] > 0) {
-			imageView = [[[window contentView] subviews] objectAtIndex:0];
-		} else {
 			imageView = [[NSImageView alloc] initWithFrame:[[window contentView] frame]];
 			dispatch_async(dispatch_get_main_queue(), ^{
 				[[window contentView] addSubview:imageView];
 			});
-		}
 
 		NSString *imagePath = [NSString stringWithUTF8String:path];
 		NSImage *image = [[NSImage alloc] initWithContentsOfFile:imagePath];
@@ -58,15 +53,10 @@ void setBackgroudImage(const char *path) {
 void setBackgroudImageByData(unsigned char *data, int width, int height) {
 	@autoreleasepool {
 		NSImageView *imageView;
-		// if there is a image view already, reuse it
-		if ([[[window contentView] subviews] count] > 0) {
-			imageView = [[[window contentView] subviews] objectAtIndex:0];
-		} else {
 			imageView = [[NSImageView alloc] initWithFrame:[[window contentView] frame]];
 			dispatch_async(dispatch_get_main_queue(), ^{
 				[[window contentView] addSubview:imageView];
 			});
-		}
 
 		NSBitmapImageRep *bitmap = [[NSBitmapImageRep alloc] initWithBitmapDataPlanes:NULL
 			pixelsWide:width
@@ -95,7 +85,6 @@ void clean() {
 		});
 	}
 }
-
 
 */
 import "C"

@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"image"
 	"io"
+	"log"
 	"net"
 	"nf/config"
 	"nf/screen"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -66,7 +68,67 @@ func handleConnection(conn net.Conn) {
 			shutdown(0)
 		case "test":
 			screen.SetBackgroudImage("./awake.png")
-		case "clear":
+		case "image":
+			if len(cmd) != 2 {
+				e := "image command requires a file name"
+				conn.Write([]byte(e))
+				fmt.Println(e)
+				continue
+			}
+			file := cmd[1]
+			_, err := os.Stat(file)
+			if err != nil {
+				if err == os.ErrNotExist {
+					e := fmt.Sprintf("File %s does not exist", file)
+					log.Println(e)
+					conn.Write([]byte(e))
+					continue
+				}
+			}
+			screen.SetBackgroudImage(file)
+		case "image_at":
+			if len(cmd) != 4 {
+				e := "image_at command requires a file name, x and y"
+				conn.Write([]byte(e))
+				fmt.Println(e)
+				continue
+			}
+			file := cmd[1]
+			_, err := os.Stat(file)
+			if err != nil {
+				if err == os.ErrNotExist {
+					e := fmt.Sprintf("File %s does not exist", file)
+					log.Println(e)
+					conn.Write([]byte(e))
+					continue
+				}
+			}
+			x := cmd[2]
+			y := cmd[3]
+			xa, err := strconv.Atoi(x)
+			if err != nil {
+				e := fmt.Sprintf("Invalid x value: %s", x)
+				log.Println(e)
+				conn.Write([]byte(e))
+				continue
+			}
+			ya, err := strconv.Atoi(y)
+			if err != nil {
+				e := fmt.Sprintf("Invalid y value: %s", y)
+				log.Println(e)
+				conn.Write([]byte(e))
+				continue
+			}
+			err = screen.SetBackgroudImageAt(file, xa, ya)
+			if err != nil {
+				e := fmt.Sprintf("Failed to set image at %d, %d: %s", xa, ya, err)
+				log.Println(e)
+				conn.Write([]byte(e))
+				continue
+			}
+
+		case "clear", "cls", "clean":
+			screen.Clean()
 		default:
 			e := fmt.Sprintf("Unknown command: %s", buf[:n])
 			if !config.CFG.Silent {
