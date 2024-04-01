@@ -1,11 +1,11 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"image"
 	"io"
-	"log"
 	"net"
 	"nf/config"
 	"nf/screen"
@@ -51,103 +51,90 @@ func handleConnection(conn net.Conn) {
 			return
 		}
 
-		fmt.Println("Recebido:", string(buf[:n]))
-
-		// remove duplicate spaces
-		b := strings.Join(strings.Fields(string(buf[:n])), " ")
-
-		cmd := strings.Split(b, " ")
-
-		switch cmd[0] {
-		case "shutdown":
-			_, err = conn.Write([]byte("shutdown server"))
-			if err != nil {
-				fmt.Println("failed to write:", err)
-				shutdown(1)
-			}
-			shutdown(0)
-		case "test":
-			screen.SetBackgroudImage("./awake.png")
-		case "image":
-			if len(cmd) != 2 {
-				e := "image command requires a file name"
-				conn.Write([]byte(e))
-				fmt.Println(e)
-				continue
-			}
-			file := cmd[1]
-			_, err := os.Stat(file)
-			if err != nil {
-				if err == os.ErrNotExist {
-					e := fmt.Sprintf("File %s does not exist", file)
-					log.Println(e)
-					conn.Write([]byte(e))
-					continue
-				}
-			}
-			screen.SetBackgroudImage(file)
-		case "image_at":
-			if len(cmd) != 4 {
-				e := "image_at command requires a file name, x and y"
-				conn.Write([]byte(e))
-				fmt.Println(e)
-				continue
-			}
-			file := cmd[1]
-			_, err := os.Stat(file)
-			if err != nil {
-				if err == os.ErrNotExist {
-					e := fmt.Sprintf("File %s does not exist", file)
-					log.Println(e)
-					conn.Write([]byte(e))
-					continue
-				}
-			}
-			x := cmd[2]
-			y := cmd[3]
-			xa, err := strconv.Atoi(x)
-			if err != nil {
-				e := fmt.Sprintf("Invalid x value: %s", x)
-				log.Println(e)
-				conn.Write([]byte(e))
-				continue
-			}
-			ya, err := strconv.Atoi(y)
-			if err != nil {
-				e := fmt.Sprintf("Invalid y value: %s", y)
-				log.Println(e)
-				conn.Write([]byte(e))
-				continue
-			}
-			err = screen.SetBackgroudImageAt(file, xa, ya)
-			if err != nil {
-				e := fmt.Sprintf("Failed to set image at %d, %d: %s", xa, ya, err)
-				log.Println(e)
-				conn.Write([]byte(e))
-				continue
-			}
-
-		case "clear", "cls", "clean":
-			screen.Clean()
-		default:
-			e := fmt.Sprintf("Unknown command: %s", buf[:n])
-			if !config.CFG.Silent {
-				fmt.Printf(e)
-			}
-			_, err = conn.Write([]byte(e))
-			if err != nil {
-				fmt.Println("failed to write:", err)
-				shutdown(1)
-			}
-			continue
+		err = runCMD(buf[:n], err, conn)
+		if err != nil {
+			conn.Write([]byte(err.Error()))
+			fmt.Println("failed to run command:", err)
 		}
+	}
+}
 
-		_, err = conn.Write([]byte("OK"))
+func runCMD(buf []byte, err error, conn net.Conn) error {
+	fmt.Println("Rreceived command:", string(buf))
+
+	// TODO: Support multiple commands in one line separated by ;
+	// TODO: Support multiple commands (one per line)
+	// TODO: help command
+
+	b := strings.Join(strings.Fields(string(buf)), " ")
+	b = strings.TrimSpace(b)
+	cmd := strings.Split(b, " ")
+
+	switch cmd[0] {
+	case "shutdown":
+		_, err = conn.Write([]byte("shutdown server"))
 		if err != nil {
 			fmt.Println("failed to write:", err)
 			shutdown(1)
 		}
+		shutdown(0)
+	case "test":
+		screen.SetBackgroudImage("./awake.png")
+	case "image":
+		if len(cmd) != 2 {
+			e := "image command requires a file name"
+			return errors.New(e)
+		}
+		file := cmd[1]
+		_, err := os.Stat(file)
+		if err != nil {
+			if err == os.ErrNotExist {
+				e := fmt.Sprintf("File %s does not exist", file)
+				return errors.New(e)
+			}
+		}
+		screen.SetBackgroudImage(file)
+	case "image_at":
+		if len(cmd) != 4 {
+			e := "image_at command requires a file name, x and y"
+			return errors.New(e)
+		}
+		file := cmd[1]
+		_, err := os.Stat(file)
+		if err != nil {
+			if err == os.ErrNotExist {
+				e := fmt.Sprintf("File %s does not exist", file)
+				return errors.New(e)
+			}
+		}
+		x := cmd[2]
+		y := cmd[3]
+		xa, err := strconv.Atoi(x)
+		if err != nil {
+			e := fmt.Sprintf("Invalid x value: %s", x)
+			return errors.New(e)
+		}
+		ya, err := strconv.Atoi(y)
+		if err != nil {
+			e := fmt.Sprintf("Invalid y value: %s", y)
+			return errors.New(e)
+		}
+		err = screen.SetBackgroudImageAt(file, xa, ya)
+		if err != nil {
+			e := fmt.Sprintf("Failed to set image at %d, %d: %s", xa, ya, err)
+			return errors.New(e)
+		}
+
+	case "clear", "cls", "clean":
+		screen.Clean()
+	default:
+		e := fmt.Sprintf("Unknown command: %s", buf)
+		return errors.New(e)
 	}
+
+	_, err = conn.Write([]byte("OK"))
+
+	return err
 }
 
 func UDSClient() net.Conn {
