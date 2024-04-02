@@ -65,6 +65,10 @@ func runCMD(buf []byte, err error, conn net.Conn) error {
 	// TODO: Support multiple commands in one line separated by ;
 	// TODO: Support multiple commands (one per line)
 	// TODO: help command
+	// TODO: validate coordinates (not negative, not out of bounds)
+	// TODO: cache images
+	// TODO: images preloaded in the executable (embeded)
+	// TODO: Add support for text (font, size, color, position)
 
 	b := strings.Join(strings.Fields(string(buf)), " ")
 	b = strings.TrimSpace(b)
@@ -122,6 +126,42 @@ func runCMD(buf []byte, err error, conn net.Conn) error {
 		err = screen.SetBackgroudImageAt(file, xa, ya)
 		if err != nil {
 			e := fmt.Sprintf("Failed to set image at %d, %d: %s", xa, ya, err)
+			return errors.New(e)
+		}
+
+	case "box":
+		if len(cmd) != 6 {
+			e := "box command requires x, y, width, height and color"
+			return errors.New(e)
+		}
+		x := cmd[1]
+		y := cmd[2]
+		w := cmd[3]
+		h := cmd[4]
+		c := cmd[5]
+		xa, err := strconv.Atoi(x)
+		if err != nil {
+			e := fmt.Sprintf("Invalid x value: %s", x)
+			return errors.New(e)
+		}
+		ya, err := strconv.Atoi(y)
+		if err != nil {
+			e := fmt.Sprintf("Invalid y value: %s", y)
+			return errors.New(e)
+		}
+		wa, err := strconv.Atoi(w)
+		if err != nil {
+			e := fmt.Sprintf("Invalid width value: %s", w)
+			return errors.New(e)
+		}
+		ha, err := strconv.Atoi(h)
+		if err != nil {
+			e := fmt.Sprintf("Invalid height value: %s", h)
+			return errors.New(e)
+		}
+		err = screen.DrawBox(xa, ya, wa, ha, c)
+		if err != nil {
+			e := fmt.Sprintf("Failed to draw box at %d, %d: %s", xa, ya, err)
 			return errors.New(e)
 		}
 
