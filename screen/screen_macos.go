@@ -100,11 +100,12 @@ func GetScreenSize() (width, height int) {
 	return
 }
 
-func SetBackgroudImageByData(data []byte, width, height int) {
+func SetBackgroudImageByData(data []byte) {
 	C.setBackgroudImageByData((*C.uchar)(&data[0]), C.int(width), C.int(height))
 }
 
 func Clean() {
+	imgBuf = make([]byte, width*height*4)
 	C.clean()
 }
 

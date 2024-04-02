@@ -54,7 +54,7 @@ func SetBackgroudImageAt(file string, x, y int) error {
 		}
 	}
 
-	SetBackgroudImageByData(imgBuf, width, height)
+	SetBackgroudImageByData(imgBuf)
 
 	return nil
 }
@@ -130,7 +130,12 @@ func DrawBox(x, y, w, h int, color string) error {
 		}
 	}
 
-	SetBackgroudImageByData(imgBuf, width, height)
+	SetBackgroudImageByData(imgBuf)
+
+	return nil
+}
+
+func DrawText(x, y int, text, color string) error {
 
 	return nil
 }
