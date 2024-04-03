@@ -3,10 +3,21 @@ package screen
 import (
 	"errors"
 	"image"
+	"image/color"
+	"image/draw"
 	_ "image/png"
 	"os"
 	"strings"
+
+	_ "embed"
+
+	"github.com/golang/freetype"
+	"github.com/golang/freetype/truetype"
+	"golang.org/x/image/font"
 )
+
+//go:embed assets/3270-Regular.ttf
+var ibm3270font []byte
 
 var (
 	imgBuf        []byte
@@ -14,11 +25,23 @@ var (
 
 	ErrInvalidColor = errors.New("Invalid color format")
 	ErrInvalidHex   = errors.New("Invalid hex format")
+
+	preparedFont *truetype.Font
 )
+
+func prepareFont() {
+	var err error
+	preparedFont, err = truetype.Parse(ibm3270font)
+	if err != nil {
+		panic(err)
+	}
+}
 
 func init() {
 	width, height = GetScreenSize()
 	imgBuf = make([]byte, width*height*4)
+
+	prepareFont()
 }
 
 func LoadImage(file string) (image.Image, error) {
@@ -41,18 +64,7 @@ func SetBackgroudImageAt(file string, x, y int) error {
 		return err
 	}
 
-	bounds := img.Bounds()
-	w, h := bounds.Dx(), bounds.Dy()
-	for j := 0; j < h; j++ {
-		for i := 0; i < w; i++ {
-			r, g, b, a := img.At(i, j).RGBA()
-			idx := (j+y)*width*4 + (i+x)*4
-			imgBuf[idx] = byte(r >> 8)
-			imgBuf[idx+1] = byte(g >> 8)
-			imgBuf[idx+2] = byte(b >> 8)
-			imgBuf[idx+3] = byte(a >> 8)
-		}
-	}
+	CopyImageToScreen(img, x, y)
 
 	SetBackgroudImageByData(imgBuf)
 
@@ -135,7 +147,56 @@ func DrawBox(x, y, w, h int, color string) error {
 	return nil
 }
 
-func DrawText(x, y int, text, color string) error {
+func DrawText(x, y, w, h int, text string, fgColor, bgColor string) error {
+	fgR, fgG, fgB, fgA, err := HexToRGBA(fgColor)
+	if err != nil {
+		return err
+	}
+	fg := color.RGBA{fgR, fgG, fgB, fgA}
+
+	bgR, bgG, bgB, bgA, err := HexToRGBA(bgColor)
+	if err != nil {
+		return err
+	}
+	bg := color.RGBA{bgR, bgG, bgB, bgA}
+
+	size := 20.0
+
+	rgba := image.NewRGBA(image.Rect(x, y, w, h))
+	draw.Draw(rgba, rgba.Bounds(), &image.Uniform{bg}, image.Point{}, draw.Src)
+	fontContext := freetype.NewContext()
+	fontContext.SetDPI(96)
+	fontContext.SetFont(preparedFont)
+	fontContext.SetFontSize(size)
+	fontContext.SetClip(rgba.Bounds())
+	fontContext.SetDst(rgba)
+	fontContext.SetSrc(image.NewUniform(fg))
+	fontContext.SetHinting(font.HintingNone)
+
+	pt := freetype.Pt(x, y+int(fontContext.PointToFixed(size)>>6))
+	_, err = fontContext.DrawString(text, pt)
+	if err != nil {
+		return err
+	}
+
+	CopyImageToScreen(rgba, x, y)
+
+	SetBackgroudImageByData(imgBuf)
 
 	return nil
+}
+
+func CopyImageToScreen(img image.Image, x, y int) {
+	bounds := img.Bounds()
+	w, h := bounds.Dx(), bounds.Dy()
+	for j := 0; j < h; j++ {
+		for i := 0; i < w; i++ {
+			r, g, b, a := img.At(i, j).RGBA()
+			idx := (j+y)*width*4 + (i+x)*4
+			imgBuf[idx] = byte(r >> 8)
+			imgBuf[idx+1] = byte(g >> 8)
+			imgBuf[idx+2] = byte(b >> 8)
+			imgBuf[idx+3] = byte(a >> 8)
+		}
+	}
 }

@@ -69,6 +69,9 @@ func runCMD(buf []byte, err error, conn net.Conn) error {
 	// TODO: cache images
 	// TODO: images preloaded in the executable (embeded)
 	// TODO: Add support for text (font, size, color, position)
+	// TODO  Add support for multipla layers (z-index)
+	// TODO: Add support for slides (change to another vector of layers)
+	// TODO: Multiple monitors
 
 	b := strings.Join(strings.Fields(string(buf)), " ")
 	b = strings.TrimSpace(b)
@@ -84,6 +87,11 @@ func runCMD(buf []byte, err error, conn net.Conn) error {
 		shutdown(0)
 	case "test":
 		screen.SetBackgroudImage("./awake.png")
+
+		screen.SetBackgroudImageAt("./awake.png", 100, 100)
+
+		screen.DrawText(40, 40, 600, 600, "Hello World", "FFFFFFFF", "FF00FFCC")
+
 	case "image":
 		if len(cmd) != 2 {
 			e := "image command requires a file name"
