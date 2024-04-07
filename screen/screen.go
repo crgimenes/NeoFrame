@@ -1,7 +1,9 @@
 package screen
 
 import (
+	"image"
 	"log"
+	"os"
 
 	"github.com/hajimehoshi/ebiten/v2"
 )
@@ -11,15 +13,12 @@ const (
 )
 
 type neoframe struct {
-	keys []ebiten.Key
+	img                         *image.RGBA
+	monitorWidth, monitorHeight int
 }
 
-var (
-	monitorWidth, monitorHeight = ebiten.ScreenSizeInFullscreen()
-)
-
 func (nf *neoframe) Layout(outsideWidth, outsideHeight int) (int, int) {
-	return monitorWidth, monitorHeight
+	return nf.monitorWidth, nf.monitorHeight
 }
 
 func (nf *neoframe) Update() error {
@@ -45,8 +44,38 @@ func SetBackgroudImageByData(data []byte) {
 func Clean() {
 }
 
+func LoadImage(file string) (image.Image, error) {
+	f, err := os.Open(file)
+	if err != nil {
+		return nil, err
+	}
+
+	img, _, err := image.Decode(f)
+	if err != nil {
+		return nil, err
+	}
+
+	return img, nil
+}
+
+func SetBackgroudImageAt(file string, x, y int) error {
+	return nil
+}
+
+func DrawBox(x, y, w, h int, color string) error {
+	return nil
+}
+
+func DrawText(x, y, w, h int, text string, fgColor, bgColor string) error {
+	return nil
+}
+
+func CopyImageToScreen(img image.Image, x, y int) {
+}
+
 func RunApp() {
 	nf := &neoframe{}
+	nf.monitorWidth, nf.monitorHeight = ebiten.ScreenSizeInFullscreen()
 
 	ebiten.SetRunnableOnUnfocused(true)
 	ebiten.SetScreenClearedEveryFrame(false)
@@ -56,7 +85,7 @@ func RunApp() {
 	ebiten.SetWindowFloating(true)
 	ebiten.SetWindowMousePassthrough(true)
 	ebiten.SetWindowPosition(0, 0)
-	ebiten.SetWindowSize(monitorWidth, monitorHeight)
+	ebiten.SetWindowSize(nf.monitorWidth, nf.monitorHeight)
 	ebiten.SetWindowTitle(name)
 
 	err := ebiten.RunGameWithOptions(nf, &ebiten.RunGameOptions{
