@@ -2,15 +2,20 @@ package screen
 
 import (
 	"image"
+	"image/draw"
 	"log"
 	"os"
 
 	"github.com/hajimehoshi/ebiten/v2"
+
+	_ "image/png"
 )
 
 const (
 	name = "NeoFrame"
 )
+
+var nf *neoframe
 
 type neoframe struct {
 	img                         *image.RGBA
@@ -29,9 +34,19 @@ func (nf *neoframe) Update() error {
 }
 
 func (nf *neoframe) Draw(screen *ebiten.Image) {
+	screen.WritePixels(nf.img.Pix)
 }
 
 func SetBackgroudImage(path string) {
+	img, err := LoadImage(path)
+	if err != nil {
+		log.Println("failed to load image:", err)
+		return
+	}
+
+	nf.img = image.NewRGBA(img.Bounds())
+	draw.Draw(nf.img, img.Bounds(), img, image.Pt(0, 0), draw.Src)
+	return
 }
 
 func GetScreenSize() (width, height int) {
@@ -59,6 +74,12 @@ func LoadImage(file string) (image.Image, error) {
 }
 
 func SetBackgroudImageAt(file string, x, y int) error {
+	img, err := LoadImage(file)
+	if err != nil {
+		return err
+	}
+
+	draw.Draw(nf.img, img.Bounds().Add(image.Pt(x, y)), img, image.Pt(0, 0), draw.Src)
 	return nil
 }
 
@@ -71,11 +92,13 @@ func DrawText(x, y, w, h int, text string, fgColor, bgColor string) error {
 }
 
 func CopyImageToScreen(img image.Image, x, y int) {
+	draw.Draw(nf.img, img.Bounds().Add(image.Pt(x, y)), img, image.Pt(0, 0), draw.Src)
 }
 
 func RunApp() {
-	nf := &neoframe{}
-	nf.monitorWidth, nf.monitorHeight = ebiten.ScreenSizeInFullscreen()
+	nf = &neoframe{}
+	nf.monitorWidth, nf.monitorHeight = ebiten.Monitor().Size()
+	nf.img = image.NewRGBA(image.Rect(0, 0, nf.monitorWidth, nf.monitorHeight))
 
 	ebiten.SetRunnableOnUnfocused(true)
 	ebiten.SetScreenClearedEveryFrame(false)

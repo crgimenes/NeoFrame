@@ -87,11 +87,11 @@ func runCMD(buf []byte, err error, conn net.Conn) error {
 		}
 		shutdown(0)
 	case "test":
-		screen.SetBackgroudImage("./awake.png")
+		//screen.SetBackgroudImage("./awake.png")
 
 		screen.SetBackgroudImageAt("./awake.png", 100, 100)
 
-		screen.DrawText(40, 40, 600, 600, "Hello World", "FFFFFFFF", "FF00FFCC")
+		//screen.DrawText(40, 40, 600, 600, "Hello World", "FFFFFFFF", "FF00FFCC")
 
 	case "image":
 		if len(cmd) != 2 {
