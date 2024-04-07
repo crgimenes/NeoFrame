@@ -10,6 +10,7 @@ import (
 	"nf/config"
 	"nf/screen"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -30,7 +31,7 @@ func usage() {
 func shutdown(ret int) {
 	if config.CFG.ServerMode {
 		if !config.CFG.Silent {
-			fmt.Println("Shutdown server")
+			fmt.Println("\r\nShutdown server")
 		}
 		os.Remove(config.CFG.UnixDomainSocket)
 	}
@@ -219,7 +220,7 @@ func UDSListener() {
 	listener, err := net.Listen("unix", config.CFG.UnixDomainSocket)
 	if err != nil {
 		fmt.Println("failed to listen:", err)
-		shutdown(1)
+		os.Exit(1)
 	}
 	defer listener.Close()
 
@@ -264,11 +265,18 @@ func main() {
 
 	flag.Parse()
 
-	defer func() {
-		if config.CFG.ServerMode {
+	if config.CFG.ServerMode {
+		defer func() {
 			os.Remove(uds)
-		}
-	}()
+		}()
+
+		go func() {
+			sc := make(chan os.Signal, 1)
+			signal.Notify(sc, os.Interrupt)
+			<-sc
+			shutdown(0)
+		}()
+	}
 
 	switch {
 	case config.CFG.GetScreenInfo:
