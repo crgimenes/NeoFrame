@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"image"
 	"io"
+	"log"
 	"net"
 	"nf/config"
 	"nf/screen"
@@ -14,6 +15,8 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/ergochat/readline"
 )
 
 var (
@@ -250,6 +253,52 @@ func RGBAImageToBytes(img *image.RGBA) []byte {
 	return bytes
 }
 
+func filterInput(r rune) (rune, bool) {
+	switch r {
+	// block CtrlZ feature
+	case readline.CharCtrlZ:
+		return r, false
+	}
+	return r, true
+}
+
+var completer = readline.NewPrefixCompleter()
+
+func runCLI() {
+	rl, err := readline.NewEx(&readline.Config{
+		Prompt:          "> ",
+		HistoryFile:     "/tmp/readline.tmp",
+		AutoComplete:    completer,
+		InterruptPrompt: "^C",
+		EOFPrompt:       "exit",
+
+		HistorySearchFold:   true,
+		FuncFilterInputRune: filterInput,
+		Stdin:               os.Stdin,
+		Stdout:              os.Stdout,
+		Stderr:              os.Stderr,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer rl.Close()
+	log.SetOutput(rl.Stderr()) // redraw the prompt correctly after log output
+
+	for {
+		line, err := rl.ReadLine()
+		// `err` is either nil, io.EOF, readline.ErrInterrupt, or an unexpected
+		// condition in stdin:
+		if err != nil {
+			return
+		}
+		// `line` is returned without the terminating \n or CRLF:
+		fmt.Fprintf(rl, "you wrote: %s\n", line)
+		if line == "exit" {
+			shutdown(0)
+		}
+	}
+}
+
 func main() {
 	const tmpDir = "/tmp"
 	uds := filepath.Join(tmpDir, "neoframe.sock")
@@ -300,6 +349,7 @@ func main() {
 			fmt.Println("Unix domain socket:", config.CFG.UnixDomainSocket)
 		}
 		go UDSListener()
+		go runCLI()
 		screen.RunApp()
 	case cmd != "":
 		conn := UDSClient()
