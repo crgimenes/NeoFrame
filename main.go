@@ -19,6 +19,10 @@ import (
 	"github.com/ergochat/readline"
 )
 
+const (
+	tmpDir = "/tmp"
+)
+
 var (
 	versionTag string = "dev"
 )
@@ -55,7 +59,7 @@ func handleConnection(conn net.Conn) {
 			return
 		}
 
-		err = runCMD(buf[:n], err, conn)
+		err = runCMD(buf[:n], conn)
 		if err != nil {
 			conn.Write([]byte(err.Error()))
 			fmt.Println("failed to run command:", err)
@@ -63,7 +67,7 @@ func handleConnection(conn net.Conn) {
 	}
 }
 
-func runCMD(buf []byte, err error, conn net.Conn) error {
+func runCMD(buf []byte, conn net.Conn) error {
 	fmt.Println("Rreceived command:", string(buf))
 
 	// TODO: Support multiple commands in one line separated by ;
@@ -81,12 +85,16 @@ func runCMD(buf []byte, err error, conn net.Conn) error {
 	b = strings.TrimSpace(b)
 	cmd := strings.Split(b, " ")
 
+	var err error
+
 	switch cmd[0] {
 	case "shutdown":
-		_, err = conn.Write([]byte("shutdown server"))
-		if err != nil {
-			fmt.Println("failed to write:", err)
-			shutdown(1)
+		if conn != nil {
+			_, err = conn.Write([]byte("shutdown server"))
+			if err != nil {
+				fmt.Println("failed to write:", err)
+				shutdown(1)
+			}
 		}
 		shutdown(0)
 	case "test":
@@ -184,7 +192,10 @@ func runCMD(buf []byte, err error, conn net.Conn) error {
 		return errors.New(e)
 	}
 
-	_, err = conn.Write([]byte("OK"))
+	if conn != nil {
+		_, err = conn.Write([]byte("OK"))
+	}
+	log.Println("OK")
 
 	return err
 }
@@ -265,9 +276,10 @@ func filterInput(r rune) (rune, bool) {
 var completer = readline.NewPrefixCompleter()
 
 func runCLI() {
+	historyFile := filepath.Join(tmpDir, "neoframe.history")
 	rl, err := readline.NewEx(&readline.Config{
 		Prompt:          "> ",
-		HistoryFile:     "/tmp/readline.tmp",
+		HistoryFile:     historyFile,
 		AutoComplete:    completer,
 		InterruptPrompt: "^C",
 		EOFPrompt:       "exit",
@@ -286,21 +298,15 @@ func runCLI() {
 
 	for {
 		line, err := rl.ReadLine()
-		// `err` is either nil, io.EOF, readline.ErrInterrupt, or an unexpected
-		// condition in stdin:
 		if err != nil {
+			shutdown(1)
 			return
 		}
-		// `line` is returned without the terminating \n or CRLF:
-		fmt.Fprintf(rl, "you wrote: %s\n", line)
-		if line == "exit" {
-			shutdown(0)
-		}
+		runCMD([]byte(line), nil)
 	}
 }
 
 func main() {
-	const tmpDir = "/tmp"
 	uds := filepath.Join(tmpDir, "neoframe.sock")
 	var cmd string
 
@@ -315,10 +321,6 @@ func main() {
 	flag.Parse()
 
 	if config.CFG.ServerMode {
-		defer func() {
-			os.Remove(uds)
-		}()
-
 		go func() {
 			sc := make(chan os.Signal, 1)
 			signal.Notify(sc, os.Interrupt)
