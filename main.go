@@ -104,8 +104,6 @@ func runCMD(buf []byte, conn net.Conn) error {
 		//screen.DrawText(40, 40, 600, 600, "Hello World", "FFFFFFFF", "FF00FFCC")
 
 	case "grid":
-		log.Printf("cmd: %+v\n", cmd)
-
 		if len(cmd) != 4 {
 			e := "grid command requires size horizontal, size vertical and color"
 			return errors.New(e)
@@ -123,8 +121,6 @@ func runCMD(buf []byte, conn net.Conn) error {
 			e := fmt.Sprintf("Invalid vertical size value: %s", v)
 			return errors.New(e)
 		}
-
-		log.Printf("Draw grid %d x %d, color %s", ha, va, c)
 
 		err = screen.DrawGrid(ha, va, c)
 		if err != nil {

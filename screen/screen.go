@@ -125,7 +125,20 @@ func SetBackgroudImageAt(file string, x, y int) error {
 	return nil
 }
 
-func DrawBox(x, y, w, h int, color string) error {
+func DrawBox(x, y, w, h int, colorstr string) error {
+	r, g, b, a, err := RGBAstrToColor(colorstr)
+	if err != nil {
+		return err
+	}
+
+	c := color.RGBA{r, g, b, a}
+
+	for i := x; i < x+w; i++ {
+		for j := y; j < y+h; j++ {
+			nf.img.Set(i, j, c)
+		}
+	}
+
 	return nil
 }
 
