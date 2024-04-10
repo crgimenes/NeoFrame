@@ -79,7 +79,6 @@ func runCMD(buf []byte, conn net.Conn) error {
 	// TODO: Add support for text (font, size, color, position)
 	// TODO  Add support for multipla layers (z-index)
 	// TODO: Add support for slides (change to another vector of layers)
-	// TODO: Multiple monitors
 
 	b := strings.Join(strings.Fields(string(buf)), " ")
 	b = strings.TrimSpace(b)
@@ -104,6 +103,34 @@ func runCMD(buf []byte, conn net.Conn) error {
 
 		//screen.DrawText(40, 40, 600, 600, "Hello World", "FFFFFFFF", "FF00FFCC")
 
+	case "grid":
+		log.Printf("cmd: %+v\n", cmd)
+
+		if len(cmd) != 4 {
+			e := "grid command requires size horizontal, size vertical and color"
+			return errors.New(e)
+		}
+		h := cmd[1]
+		v := cmd[2]
+		c := cmd[3]
+		ha, err := strconv.Atoi(h)
+		if err != nil {
+			e := fmt.Sprintf("Invalid horizontal size value: %s", h)
+			return errors.New(e)
+		}
+		va, err := strconv.Atoi(v)
+		if err != nil {
+			e := fmt.Sprintf("Invalid vertical size value: %s", v)
+			return errors.New(e)
+		}
+
+		log.Printf("Draw grid %d x %d, color %s", ha, va, c)
+
+		err = screen.DrawGrid(ha, va, c)
+		if err != nil {
+			e := fmt.Sprintf("Failed to draw grid: %s", err)
+			return errors.New(e)
+		}
 	case "image":
 		if len(cmd) != 2 {
 			e := "image command requires a file name"
@@ -184,7 +211,64 @@ func runCMD(buf []byte, conn net.Conn) error {
 			e := fmt.Sprintf("Failed to draw box at %d, %d: %s", xa, ya, err)
 			return errors.New(e)
 		}
-
+	case "pixel":
+		if len(cmd) != 4 {
+			e := "pixel command requires x, y and color"
+			return errors.New(e)
+		}
+		x := cmd[1]
+		y := cmd[2]
+		c := cmd[3]
+		xa, err := strconv.Atoi(x)
+		if err != nil {
+			e := fmt.Sprintf("Invalid x value: %s", x)
+			return errors.New(e)
+		}
+		ya, err := strconv.Atoi(y)
+		if err != nil {
+			e := fmt.Sprintf("Invalid y value: %s", y)
+			return errors.New(e)
+		}
+		err = screen.DrawPixel(xa, ya, c)
+		if err != nil {
+			e := fmt.Sprintf("Failed to draw pixel at %d, %d: %s", xa, ya, err)
+			return errors.New(e)
+		}
+	case "line":
+		if len(cmd) != 6 {
+			e := "line command requires x1, y1, x2, y2 and color"
+			return errors.New(e)
+		}
+		x1 := cmd[1]
+		y1 := cmd[2]
+		x2 := cmd[3]
+		y2 := cmd[4]
+		c := cmd[5]
+		x1a, err := strconv.Atoi(x1)
+		if err != nil {
+			e := fmt.Sprintf("Invalid x1 value: %s", x1)
+			return errors.New(e)
+		}
+		y1a, err := strconv.Atoi(y1)
+		if err != nil {
+			e := fmt.Sprintf("Invalid y1 value: %s", y1)
+			return errors.New(e)
+		}
+		x2a, err := strconv.Atoi(x2)
+		if err != nil {
+			e := fmt.Sprintf("Invalid x2 value: %s", x2)
+			return errors.New(e)
+		}
+		y2a, err := strconv.Atoi(y2)
+		if err != nil {
+			e := fmt.Sprintf("Invalid y2 value: %s", y2)
+			return errors.New(e)
+		}
+		err = screen.DrawLine(x1a, y1a, x2a, y2a, c)
+		if err != nil {
+			e := fmt.Sprintf("Failed to draw line from %d, %d to %d, %d: %s", x1a, y1a, x2a, y2a, err)
+			return errors.New(e)
+		}
 	case "clear", "cls", "clean":
 		screen.Clean()
 	default:
@@ -302,7 +386,10 @@ func runCLI() {
 			shutdown(1)
 			return
 		}
-		runCMD([]byte(line), nil)
+		err = runCMD([]byte(line), nil)
+		if err != nil {
+			fmt.Println(err)
+		}
 	}
 }
 
