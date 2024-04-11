@@ -50,6 +50,11 @@ func New() *LuaExtender {
 	return le
 }
 
+// Run executes the passed lua code.
+func (le *LuaExtender) Run(code string) error {
+	return le.luaState.DoString(code)
+}
+
 func (le *LuaExtender) logf(l *lua.LState) int {
 	format := l.ToString(1)
 	args := make([]interface{}, l.GetTop()-1)
@@ -89,9 +94,9 @@ func (le *LuaExtender) Compile(filePath string) (*lua.FunctionProto, error) {
 	return proto, nil
 }
 
-// DoCompiledFile takes a FunctionProto, as returned by CompileLua, and runs it in the LState. It is equivalent
+// doCompiledFile takes a FunctionProto, as returned by CompileLua, and runs it in the LState. It is equivalent
 // to calling DoFile on the LState with the original source file.
-func (le *LuaExtender) DoCompiledFile(L *lua.LState, proto *lua.FunctionProto) error {
+func (le *LuaExtender) doCompiledFile(L *lua.LState, proto *lua.FunctionProto) error {
 	lfunc := L.NewFunctionFromProto(proto)
 	L.Push(lfunc)
 	return L.PCall(0, lua.MultRet, nil)
@@ -99,7 +104,7 @@ func (le *LuaExtender) DoCompiledFile(L *lua.LState, proto *lua.FunctionProto) e
 
 // InitState starts the lua interpreter with a script.
 func (le *LuaExtender) InitState() error {
-	return le.DoCompiledFile(le.luaState, le.Proto)
+	return le.doCompiledFile(le.luaState, le.Proto)
 }
 
 // RunTrigger executes a pre-configured trigger.
