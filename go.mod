@@ -4,7 +4,8 @@ go 1.22.0
 
 require (
 	github.com/ergochat/readline v0.1.0
-	github.com/hajimehoshi/ebiten/v2 v2.7.0
+	github.com/hajimehoshi/ebiten/v2 v2.7.1
+	github.com/yuin/gopher-lua v1.1.1
 )
 
 require (
