@@ -8,13 +8,15 @@ import (
 	"io"
 	"log"
 	"net"
-	"nf/config"
-	"nf/screen"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"nf/config"
+	"nf/luaengine"
+	"nf/screen"
 
 	"github.com/ergochat/readline"
 )
@@ -25,6 +27,7 @@ const (
 
 var (
 	versionTag string = "dev"
+	le         *luaengine.LuaExtender
 )
 
 func usage() {
@@ -382,10 +385,16 @@ func runCLI() {
 			shutdown(1)
 			return
 		}
-		err = runCMD([]byte(line), nil)
+
+		err = le.Run(line)
 		if err != nil {
 			fmt.Println(err)
 		}
+
+		//err = runCMD([]byte(line), nil)
+		//if err != nil {
+		//	fmt.Println(err)
+		//}
 	}
 }
 
@@ -433,6 +442,21 @@ func main() {
 			fmt.Println("Server mode")
 			fmt.Println("Unix domain socket:", config.CFG.UnixDomainSocket)
 		}
+
+		le = luaengine.New()
+		le.Proto, err = le.Compile("init.lua")
+		if err != nil {
+			fmt.Println("failed to compile init.lua:", err)
+			shutdown(1)
+		}
+		err = le.InitState()
+		if err != nil {
+			fmt.Println("failed to init lua state:", err)
+			shutdown(1)
+		}
+
+		le.Run(`print("Hello from Lua")`)
+
 		go UDSListener()
 		go runCLI()
 		screen.RunApp()
