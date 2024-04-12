@@ -236,10 +236,26 @@ func main() {
 		nf = neoframe.New()
 
 		le = luaengine.New(nf)
-		le.Proto, err = le.Compile("init.lua")
-		if err != nil {
-			fmt.Println("failed to compile init.lua:", err)
-			shutdown(1)
+
+		// veirifica se o arvuivo init.lua existe antes de compilar
+
+		hasInitFile := func() bool {
+			_, err = os.Stat("init.lua")
+			if err != nil {
+				if err == os.ErrNotExist {
+					return false
+				}
+				log.Fatal(err)
+			}
+			return true
+		}()
+
+		if hasInitFile {
+			le.Proto, err = le.Compile("init.lua")
+			if err != nil {
+				fmt.Println("failed to compile init.lua:", err)
+				shutdown(1)
+			}
 		}
 
 		err = le.InitState()
