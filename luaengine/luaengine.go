@@ -17,6 +17,7 @@ type LuaExtender struct {
 	luaState    *lua.LState
 	triggerList map[string]*lua.LFunction
 	Proto       *lua.FunctionProto
+	Frame       Frame
 }
 
 type KeyValue struct {
@@ -32,22 +33,36 @@ type Winsize struct {
 	y      uint16 // unused
 }
 
-// New creates a new instance of LuaExtender.
-func New() *LuaExtender {
+type Frame interface {
+	GetScreenSize() (width, height int)
+}
 
-	le := &LuaExtender{}
+// New creates a new instance of LuaExtender.
+func New(f Frame) *LuaExtender {
+
+	le := &LuaExtender{
+		Frame: f,
+	}
 	le.triggerList = make(map[string]*lua.LFunction)
 	le.luaState = lua.NewState()
 	le.luaState.SetGlobal("clearTriggers", le.luaState.NewFunction(le.ClearTriggers))
 	le.luaState.SetGlobal("fileExists", le.luaState.NewFunction(le.fileExists))
+	le.luaState.SetGlobal("getScreenSize", le.luaState.NewFunction(le.getScreenSize))
 	le.luaState.SetGlobal("logf", le.luaState.NewFunction(le.logf))
 	le.luaState.SetGlobal("pwd", le.luaState.NewFunction(le.pwd))
+	le.luaState.SetGlobal("readFile", le.luaState.NewFunction(le.readFile))
 	le.luaState.SetGlobal("rmTrigger", le.luaState.NewFunction(le.removeTrigger))
 	le.luaState.SetGlobal("timer", le.luaState.NewFunction(le.timer))
 	le.luaState.SetGlobal("trigger", le.luaState.NewFunction(le.trigger))
-	le.luaState.SetGlobal("readFile", le.luaState.NewFunction(le.readFile))
 
 	return le
+}
+
+func (le *LuaExtender) getScreenSize(l *lua.LState) int {
+	width, height := le.Frame.GetScreenSize()
+	l.Push(lua.LNumber(width))
+	l.Push(lua.LNumber(height))
+	return 2
 }
 
 // Run executes the passed lua code.
