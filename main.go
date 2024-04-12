@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"flag"
 	"fmt"
 	"image"
@@ -11,12 +10,10 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
-	"strconv"
-	"strings"
 
 	"nf/config"
 	"nf/luaengine"
-	"nf/screen"
+	"nf/neoframe"
 
 	"github.com/ergochat/readline"
 )
@@ -28,6 +25,7 @@ const (
 var (
 	versionTag string = "dev"
 	le         *luaengine.LuaExtender
+	nf         *neoframe.NeoFrame
 )
 
 func usage() {
@@ -62,225 +60,16 @@ func handleConnection(conn net.Conn) {
 			return
 		}
 
-		err = runCMD(buf[:n], conn)
+		cmd := string(buf[:n])
+
+		luaCmd := fmt.Sprintf("return %s", cmd)
+
+		err = le.Run(luaCmd)
 		if err != nil {
-			conn.Write([]byte(err.Error()))
+			conn.Write([]byte(fmt.Sprintf("failed to run command: %s\n", err.Error())))
 			fmt.Println("failed to run command:", err)
 		}
 	}
-}
-
-func runCMD(buf []byte, conn net.Conn) error {
-	fmt.Println("Rreceived command:", string(buf))
-
-	// TODO: Support multiple commands in one line separated by ;
-	// TODO: Support multiple commands (one per line)
-	// TODO: help command
-	// TODO: validate coordinates (not negative, not out of bounds)
-	// TODO: cache images
-	// TODO: images preloaded in the executable (embeded)
-	// TODO: Add support for text (font, size, color, position)
-	// TODO  Add support for multipla layers (z-index)
-	// TODO: Add support for slides (change to another vector of layers)
-
-	b := strings.Join(strings.Fields(string(buf)), " ")
-	b = strings.TrimSpace(b)
-	cmd := strings.Split(b, " ")
-
-	var err error
-
-	switch cmd[0] {
-	case "shutdown":
-		if conn != nil {
-			_, err = conn.Write([]byte("shutdown server"))
-			if err != nil {
-				fmt.Println("failed to write:", err)
-				shutdown(1)
-			}
-		}
-		shutdown(0)
-	case "test":
-		//screen.SetBackgroudImage("./awake.png")
-
-		screen.SetBackgroudImageAt("./awake.png", 100, 100)
-
-		//screen.DrawText(40, 40, 600, 600, "Hello World", "FFFFFFFF", "FF00FFCC")
-
-	case "grid":
-		if len(cmd) != 4 {
-			e := "grid command requires size horizontal, size vertical and color"
-			return errors.New(e)
-		}
-		h := cmd[1]
-		v := cmd[2]
-		c := cmd[3]
-		ha, err := strconv.Atoi(h)
-		if err != nil {
-			e := fmt.Sprintf("Invalid horizontal size value: %s", h)
-			return errors.New(e)
-		}
-		va, err := strconv.Atoi(v)
-		if err != nil {
-			e := fmt.Sprintf("Invalid vertical size value: %s", v)
-			return errors.New(e)
-		}
-
-		err = screen.DrawGrid(ha, va, c)
-		if err != nil {
-			e := fmt.Sprintf("Failed to draw grid: %s", err)
-			return errors.New(e)
-		}
-	case "image":
-		if len(cmd) != 2 {
-			e := "image command requires a file name"
-			return errors.New(e)
-		}
-		file := cmd[1]
-		_, err := os.Stat(file)
-		if err != nil {
-			if err == os.ErrNotExist {
-				e := fmt.Sprintf("File %s does not exist", file)
-				return errors.New(e)
-			}
-		}
-		screen.SetBackgroudImage(file)
-	case "image_at":
-		if len(cmd) != 4 {
-			e := "image_at command requires a file name, x and y"
-			return errors.New(e)
-		}
-		file := cmd[1]
-		_, err := os.Stat(file)
-		if err != nil {
-			if err == os.ErrNotExist {
-				e := fmt.Sprintf("File %s does not exist", file)
-				return errors.New(e)
-			}
-		}
-		x := cmd[2]
-		y := cmd[3]
-		xa, err := strconv.Atoi(x)
-		if err != nil {
-			e := fmt.Sprintf("Invalid x value: %s", x)
-			return errors.New(e)
-		}
-		ya, err := strconv.Atoi(y)
-		if err != nil {
-			e := fmt.Sprintf("Invalid y value: %s", y)
-			return errors.New(e)
-		}
-		err = screen.SetBackgroudImageAt(file, xa, ya)
-		if err != nil {
-			e := fmt.Sprintf("Failed to set image at %d, %d: %s", xa, ya, err)
-			return errors.New(e)
-		}
-
-	case "box":
-		if len(cmd) != 6 {
-			e := "box command requires x, y, width, height and color"
-			return errors.New(e)
-		}
-		x := cmd[1]
-		y := cmd[2]
-		w := cmd[3]
-		h := cmd[4]
-		c := cmd[5]
-		xa, err := strconv.Atoi(x)
-		if err != nil {
-			e := fmt.Sprintf("Invalid x value: %s", x)
-			return errors.New(e)
-		}
-		ya, err := strconv.Atoi(y)
-		if err != nil {
-			e := fmt.Sprintf("Invalid y value: %s", y)
-			return errors.New(e)
-		}
-		wa, err := strconv.Atoi(w)
-		if err != nil {
-			e := fmt.Sprintf("Invalid width value: %s", w)
-			return errors.New(e)
-		}
-		ha, err := strconv.Atoi(h)
-		if err != nil {
-			e := fmt.Sprintf("Invalid height value: %s", h)
-			return errors.New(e)
-		}
-		err = screen.DrawBox(xa, ya, wa, ha, c)
-		if err != nil {
-			e := fmt.Sprintf("Failed to draw box at %d, %d: %s", xa, ya, err)
-			return errors.New(e)
-		}
-	case "pixel":
-		if len(cmd) != 4 {
-			e := "pixel command requires x, y and color"
-			return errors.New(e)
-		}
-		x := cmd[1]
-		y := cmd[2]
-		c := cmd[3]
-		xa, err := strconv.Atoi(x)
-		if err != nil {
-			e := fmt.Sprintf("Invalid x value: %s", x)
-			return errors.New(e)
-		}
-		ya, err := strconv.Atoi(y)
-		if err != nil {
-			e := fmt.Sprintf("Invalid y value: %s", y)
-			return errors.New(e)
-		}
-		err = screen.DrawPixel(xa, ya, c)
-		if err != nil {
-			e := fmt.Sprintf("Failed to draw pixel at %d, %d: %s", xa, ya, err)
-			return errors.New(e)
-		}
-	case "line":
-		if len(cmd) != 6 {
-			e := "line command requires x1, y1, x2, y2 and color"
-			return errors.New(e)
-		}
-		x1 := cmd[1]
-		y1 := cmd[2]
-		x2 := cmd[3]
-		y2 := cmd[4]
-		c := cmd[5]
-		x1a, err := strconv.Atoi(x1)
-		if err != nil {
-			e := fmt.Sprintf("Invalid x1 value: %s", x1)
-			return errors.New(e)
-		}
-		y1a, err := strconv.Atoi(y1)
-		if err != nil {
-			e := fmt.Sprintf("Invalid y1 value: %s", y1)
-			return errors.New(e)
-		}
-		x2a, err := strconv.Atoi(x2)
-		if err != nil {
-			e := fmt.Sprintf("Invalid x2 value: %s", x2)
-			return errors.New(e)
-		}
-		y2a, err := strconv.Atoi(y2)
-		if err != nil {
-			e := fmt.Sprintf("Invalid y2 value: %s", y2)
-			return errors.New(e)
-		}
-		err = screen.DrawLine(x1a, y1a, x2a, y2a, c)
-		if err != nil {
-			e := fmt.Sprintf("Failed to draw line from %d, %d to %d, %d: %s", x1a, y1a, x2a, y2a, err)
-			return errors.New(e)
-		}
-	case "clear", "cls", "clean":
-		screen.Clean()
-	default:
-		e := fmt.Sprintf("Unknown command: %s", buf)
-		return errors.New(e)
-	}
-
-	if conn != nil {
-		_, err = conn.Write([]byte("OK"))
-	}
-	log.Println("OK")
-
-	return err
 }
 
 func UDSClient() net.Conn {
@@ -423,7 +212,7 @@ func main() {
 
 	switch {
 	case config.CFG.GetScreenInfo:
-		width, height := screen.GetScreenSize()
+		width, height := nf.GetScreenSize()
 		if config.CFG.Silent {
 			fmt.Printf("%d %d\n", width, height)
 			return
@@ -441,25 +230,27 @@ func main() {
 		if !config.CFG.Silent {
 			fmt.Println("Server mode")
 			fmt.Println("Unix domain socket:", config.CFG.UnixDomainSocket)
+
 		}
 
-		le = luaengine.New()
+		nf = neoframe.New()
+
+		le = luaengine.New(nf)
 		le.Proto, err = le.Compile("init.lua")
 		if err != nil {
 			fmt.Println("failed to compile init.lua:", err)
 			shutdown(1)
 		}
+
 		err = le.InitState()
 		if err != nil {
 			fmt.Println("failed to init lua state:", err)
 			shutdown(1)
 		}
 
-		le.Run(`print("Hello from Lua")`)
-
 		go UDSListener()
 		go runCLI()
-		screen.RunApp()
+		nf.Run()
 	case cmd != "":
 		conn := UDSClient()
 		s := UDSClientSend(conn, cmd)
