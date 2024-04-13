@@ -6,6 +6,7 @@ import (
 	"image/color"
 	"image/draw"
 	"log"
+	"nf/config"
 	"os"
 	"strconv"
 
@@ -19,8 +20,8 @@ const (
 )
 
 type NeoFrame struct {
-	img                         *image.RGBA
-	monitorWidth, monitorHeight int
+	img                 *image.RGBA
+	maxWidth, maxHeight int
 }
 
 func New() *NeoFrame {
@@ -28,7 +29,7 @@ func New() *NeoFrame {
 }
 
 func (nf *NeoFrame) Layout(outsideWidth, outsideHeight int) (int, int) {
-	return nf.monitorWidth, nf.monitorHeight
+	return nf.maxWidth, nf.maxHeight
 }
 
 func (nf *NeoFrame) Update() error {
@@ -93,14 +94,14 @@ func (nf *NeoFrame) SetBackgroudImage(path string) {
 }
 
 func (nf *NeoFrame) GetScreenSize() (width, height int) {
-	return nf.monitorWidth, nf.monitorHeight
+	return nf.maxWidth, nf.maxHeight
 }
 
 func (nf *NeoFrame) SetBackgroudImageByData(data []byte) {
 }
 
 func (nf *NeoFrame) Clean() {
-	nf.img = image.NewRGBA(image.Rect(0, 0, nf.monitorWidth, nf.monitorHeight))
+	nf.img = image.NewRGBA(image.Rect(0, 0, nf.maxWidth, nf.maxHeight))
 }
 
 func LoadImage(file string) (image.Image, error) {
@@ -236,15 +237,15 @@ func (nf *NeoFrame) DrawGrid(ha, va int, colorstr string) error {
 	log.Println("Drawing grid with horizontal:", ha, "vertical:", va, "color:", c)
 
 	// draw horizontal lines
-	for i := 0; i < nf.monitorHeight; i += va {
-		for j := 0; j < nf.monitorWidth; j++ {
+	for i := 0; i < nf.maxHeight; i += va {
+		for j := 0; j < nf.maxWidth; j++ {
 			nf.img.Set(j, i, c)
 		}
 	}
 
 	// draw vertical lines
-	for i := 0; i < nf.monitorWidth; i += ha {
-		for j := 0; j < nf.monitorHeight; j++ {
+	for i := 0; i < nf.maxWidth; i += ha {
+		for j := 0; j < nf.maxHeight; j++ {
 			nf.img.Set(i, j, c)
 		}
 	}
@@ -259,18 +260,38 @@ func (nf *NeoFrame) CopyImageToScreen(img image.Image, x, y int) {
 }
 
 func (nf *NeoFrame) Run() {
-	nf.monitorWidth, nf.monitorHeight = ebiten.Monitor().Size()
-	nf.img = image.NewRGBA(image.Rect(0, 0, nf.monitorWidth, nf.monitorHeight))
+	maxWidth, maxHeight := ebiten.Monitor().Size()
+	if config.CFG.WindowWidth == 0 {
+		config.CFG.WindowWidth = maxWidth
+		nf.maxWidth = maxWidth
+	}
+
+	if config.CFG.WindowHeight == 0 {
+		config.CFG.WindowHeight = maxHeight
+		nf.maxHeight = maxHeight
+	}
+
+	nf.img = image.NewRGBA(image.Rect(0, 0, nf.maxWidth, nf.maxHeight))
+
+	if config.CFG.WindowBgColor != "" {
+		r, g, b, a, err := RGBAstrToColor(config.CFG.WindowBgColor)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		c := color.RGBA{r, g, b, a}
+
+		draw.Draw(nf.img, nf.img.Bounds(), &image.Uniform{c}, image.Pt(0, 0), draw.Src)
+	}
 
 	ebiten.SetRunnableOnUnfocused(true)
 	ebiten.SetScreenClearedEveryFrame(false)
-	ebiten.SetTPS(50)
 	ebiten.SetVsyncEnabled(true)
-	ebiten.SetWindowDecorated(false)
+	ebiten.SetWindowDecorated(config.CFG.WindowBorder)
 	ebiten.SetWindowFloating(true)
-	ebiten.SetWindowMousePassthrough(true)
-	ebiten.SetWindowPosition(0, 0)
-	ebiten.SetWindowSize(nf.monitorWidth, nf.monitorHeight)
+	ebiten.SetWindowMousePassthrough(config.CFG.MousePassthrough)
+	ebiten.SetWindowPosition(config.CFG.WindowX, config.CFG.WindowY)
+	ebiten.SetWindowSize(nf.maxWidth, nf.maxHeight)
 	ebiten.SetWindowTitle(name)
 
 	err := ebiten.RunGameWithOptions(nf, &ebiten.RunGameOptions{

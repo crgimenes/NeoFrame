@@ -188,21 +188,20 @@ func main() {
 	var cmd string
 
 	flag.BoolVar(&config.CFG.GetScreenInfo, "info", false, "Get screen size")
+	flag.BoolVar(&config.CFG.MousePassthrough, "mouse_passthrough", true, "Mouse passthrough")
 	flag.BoolVar(&config.CFG.ServerMode, "server", false, "Server mode")
-	flag.StringVar(&config.CFG.UnixDomainSocket, "uds", uds, "Unix domain socket")
-	flag.BoolVar(&config.CFG.VisibleWindow, "visible", false, "Visible window")
-	flag.StringVar(&config.CFG.WindowTitle, "title", "NeoFrame", "Window title")
-	flag.IntVar(&config.CFG.WindowWidth, "width", 800, "Window width")
-	flag.IntVar(&config.CFG.WindowHeight, "height", 600, "Window height")
+	flag.BoolVar(&config.CFG.WindowBorder, "border", false, "Window border")
+	flag.IntVar(&config.CFG.WindowHeight, "height", 0, "Window height")
+	flag.IntVar(&config.CFG.WindowWidth, "width", 0, "Window width")
 	flag.IntVar(&config.CFG.WindowX, "x", 0, "Window x position")
 	flag.IntVar(&config.CFG.WindowY, "y", 0, "Window y position")
-	flag.BoolVar(&config.CFG.WindowBorder, "border", false, "Window border")
-	flag.StringVar(&config.CFG.WindowBgColor, "bgcolor", "black", "Window background color")
 	flag.StringVar(&config.CFG.RunLuaScript, "run_file", "", "Run lua script")
+	flag.StringVar(&config.CFG.UnixDomainSocket, "uds", uds, "Unix domain socket")
+	flag.StringVar(&config.CFG.WindowBgColor, "bgcolor", "00000000", "Window background color (RGBA) in hex")
+	flag.StringVar(&config.CFG.WindowTitle, "title", "NeoFrame", "Window title")
 	flag.StringVar(&cmd, "cmd", "", "Command to send to server")
 
 	flag.Usage = usage
-
 	flag.Parse()
 
 	if config.CFG.ServerMode {

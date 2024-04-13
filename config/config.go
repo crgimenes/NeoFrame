@@ -4,7 +4,6 @@ type Config struct {
 	GetScreenInfo    bool
 	UnixDomainSocket string
 	ServerMode       bool
-	VisibleWindow    bool
 	WindowTitle      string
 	WindowWidth      int
 	WindowHeight     int
@@ -13,6 +12,7 @@ type Config struct {
 	WindowBorder     bool
 	WindowBgColor    string
 	RunLuaScript     string
+	MousePassthrough bool
 }
 
 var CFG = &Config{}
