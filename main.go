@@ -27,6 +27,7 @@ var (
 	versionTag string = "dev"
 	le         *luaengine.LuaExtender
 	nf         *neoframe.NeoFrame
+	ac         *AppCtrl = &AppCtrl{}
 )
 
 func usage() {
@@ -37,7 +38,9 @@ func usage() {
 	flag.PrintDefaults()
 }
 
-func shutdown(ret int) {
+type AppCtrl struct{}
+
+func (ac *AppCtrl) Shutdown(ret int) {
 	if config.CFG.ServerMode {
 		fmt.Println("\r\nShutdown server")
 		os.Remove(config.CFG.UnixDomainSocket)
@@ -76,7 +79,7 @@ func UDSClient() net.Conn {
 	conn, err := net.Dial("unix", config.CFG.UnixDomainSocket)
 	if err != nil {
 		fmt.Println("failed to dial:", err)
-		shutdown(1)
+		ac.Shutdown(1)
 	}
 	return conn
 }
@@ -85,14 +88,14 @@ func UDSClientSend(conn net.Conn, msg string) string {
 	_, err := conn.Write([]byte(msg))
 	if err != nil {
 		fmt.Println("failed to write:", err)
-		shutdown(1)
+		ac.Shutdown(1)
 	}
 	// read response
 	buf := make([]byte, 1024)
 	n, err := conn.Read(buf)
 	if err != nil {
 		fmt.Println("failed to read:", err)
-		shutdown(1)
+		ac.Shutdown(1)
 	}
 
 	return string(buf[:n])
@@ -169,7 +172,7 @@ func runCMD() {
 	for {
 		line, err := rl.ReadLine()
 		if err != nil {
-			shutdown(1)
+			ac.Shutdown(1)
 			return
 		}
 
@@ -198,7 +201,7 @@ func main() {
 			sc := make(chan os.Signal, 1)
 			signal.Notify(sc, os.Interrupt)
 			<-sc
-			shutdown(0)
+			ac.Shutdown(0)
 		}()
 	}
 
@@ -207,13 +210,13 @@ func main() {
 		_, err := os.Stat(config.CFG.UnixDomainSocket)
 		if err == nil {
 			fmt.Printf("Unix domain socket %s already exists, remove the file first\n", config.CFG.UnixDomainSocket)
-			shutdown(1)
+			ac.Shutdown(1)
 		}
 		fmt.Println("Server mode")
 		fmt.Println("Unix domain socket:", config.CFG.UnixDomainSocket)
 
 		nf = neoframe.New()
-		le = luaengine.New(nf)
+		le = luaengine.New(nf, ac)
 
 		hasInitFile := func() bool {
 			_, err = os.Stat("init.lua")
@@ -230,13 +233,13 @@ func main() {
 			le.Proto, err = le.Compile("init.lua")
 			if err != nil {
 				fmt.Println("failed to compile init.lua:", err)
-				shutdown(1)
+				ac.Shutdown(1)
 			}
 
 			err = le.InitStateWithProto()
 			if err != nil {
 				fmt.Println("failed to init lua state:", err)
-				shutdown(1)
+				ac.Shutdown(1)
 			}
 		}
 

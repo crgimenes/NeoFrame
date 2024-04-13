@@ -15,9 +15,10 @@ import (
 type LuaExtender struct {
 	mutex       sync.RWMutex
 	luaState    *lua.LState
-	triggerList map[string]*lua.LFunction
 	Proto       *lua.FunctionProto
+	triggerList map[string]*lua.LFunction
 	Frame       Frame
+	AppCtrl     AppCtrl
 }
 
 type KeyValue struct {
@@ -37,11 +38,16 @@ type Frame interface {
 	GetScreenSize() (width, height int)
 }
 
+type AppCtrl interface {
+	Shutdown(ret int)
+}
+
 // New creates a new instance of LuaExtender.
-func New(f Frame) *LuaExtender {
+func New(f Frame, ac AppCtrl) *LuaExtender {
 
 	le := &LuaExtender{
-		Frame: f,
+		Frame:   f,
+		AppCtrl: ac,
 	}
 	le.triggerList = make(map[string]*lua.LFunction)
 	le.luaState = lua.NewState()
@@ -54,8 +60,15 @@ func New(f Frame) *LuaExtender {
 	le.luaState.SetGlobal("rmTrigger", le.luaState.NewFunction(le.removeTrigger))
 	le.luaState.SetGlobal("timer", le.luaState.NewFunction(le.timer))
 	le.luaState.SetGlobal("trigger", le.luaState.NewFunction(le.trigger))
+	le.luaState.SetGlobal("shutdown", le.luaState.NewFunction(le.Shutdown))
 
 	return le
+}
+
+func (le *LuaExtender) Shutdown(l *lua.LState) int {
+	ret := l.ToInt(1)
+	le.AppCtrl.Shutdown(ret)
+	return 0
 }
 
 func (le *LuaExtender) getScreenSize(l *lua.LState) int {
