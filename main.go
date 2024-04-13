@@ -62,13 +62,14 @@ func handleConnection(conn net.Conn) {
 
 		cmd := string(buf[:n])
 
-		luaCmd := fmt.Sprintf("return %s", cmd)
-
-		err = le.Run(luaCmd)
+		err = le.Run(cmd)
 		if err != nil {
 			conn.Write([]byte(fmt.Sprintf("failed to run command: %s\n", err.Error())))
 			fmt.Println("failed to run command:", err)
+			continue
 		}
+
+		conn.Write([]byte("OK\n"))
 	}
 }
 
@@ -179,11 +180,6 @@ func runCLI() {
 		if err != nil {
 			fmt.Println(err)
 		}
-
-		//err = runCMD([]byte(line), nil)
-		//if err != nil {
-		//	fmt.Println(err)
-		//}
 	}
 }
 
