@@ -36,6 +36,7 @@ type Winsize struct {
 
 type Frame interface {
 	GetScreenSize() (width, height int)
+	SetWindowTitle(title string)
 }
 
 type AppCtrl interface {
@@ -68,6 +69,12 @@ func New(f Frame, ac AppCtrl) *LuaExtender {
 func (le *LuaExtender) Shutdown(l *lua.LState) int {
 	ret := l.ToInt(1)
 	le.AppCtrl.Shutdown(ret)
+	return 0
+}
+
+func (le *LuaExtender) SetWindowTitle(l *lua.LState) int {
+	title := l.ToString(1)
+	le.Frame.SetWindowTitle(title)
 	return 0
 }
 

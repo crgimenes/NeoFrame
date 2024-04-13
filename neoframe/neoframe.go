@@ -261,6 +261,10 @@ func (nf *NeoFrame) CopyImageToScreen(img image.Image, x, y int) {
 	draw.Draw(nf.img, img.Bounds().Add(image.Pt(x, y)), img, image.Pt(0, 0), draw.Src)
 }
 
+func (nf *NeoFrame) SetWindowTitle(title string) {
+	ebiten.SetWindowTitle(title)
+}
+
 func (nf *NeoFrame) Run() {
 	maxWidth, maxHeight := ebiten.Monitor().Size()
 	if config.CFG.WindowWidth == 0 {
@@ -291,7 +295,7 @@ func (nf *NeoFrame) Run() {
 	ebiten.SetRunnableOnUnfocused(true)
 	ebiten.SetScreenClearedEveryFrame(false)
 	ebiten.SetVsyncEnabled(true)
-	ebiten.SetWindowDecorated(config.CFG.WindowBorder)
+	ebiten.SetWindowDecorated(config.CFG.WindowDecorated)
 	ebiten.SetWindowFloating(true)
 	ebiten.SetWindowMousePassthrough(config.CFG.MousePassthrough)
 	ebiten.SetWindowPosition(config.CFG.WindowX, config.CFG.WindowY)

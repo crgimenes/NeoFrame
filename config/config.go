@@ -9,7 +9,7 @@ type Config struct {
 	WindowHeight     int
 	WindowX          int
 	WindowY          int
-	WindowBorder     bool
+	WindowDecorated  bool
 	WindowBgColor    string
 	RunLuaScript     string
 	MousePassthrough bool

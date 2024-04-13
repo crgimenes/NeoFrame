@@ -190,7 +190,7 @@ func main() {
 	flag.BoolVar(&config.CFG.GetScreenInfo, "info", false, "Get screen size")
 	flag.BoolVar(&config.CFG.MousePassthrough, "mouse_passthrough", true, "Mouse passthrough")
 	flag.BoolVar(&config.CFG.ServerMode, "server", false, "Server mode")
-	flag.BoolVar(&config.CFG.WindowBorder, "border", false, "Window border")
+	flag.BoolVar(&config.CFG.WindowDecorated, "window_decorated", false, "Window decorated")
 	flag.IntVar(&config.CFG.WindowHeight, "height", 0, "Window height")
 	flag.IntVar(&config.CFG.WindowWidth, "width", 0, "Window width")
 	flag.IntVar(&config.CFG.WindowX, "x", 0, "Window x position")
