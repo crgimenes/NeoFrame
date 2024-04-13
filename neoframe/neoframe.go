@@ -46,6 +46,8 @@ func (nf *NeoFrame) Draw(screen *ebiten.Image) {
 func RGBAstrToColor(str string) (r, g, b, a uint8, err error) {
 	// RRGGBBAA or RRGGBB
 
+	log.Println("Converting color string:", str)
+
 	if len(str) != 8 && len(str) != 6 {
 		return 0, 0, 0, 0, fmt.Errorf("invalid color string: %s", str)
 	}
@@ -263,17 +265,18 @@ func (nf *NeoFrame) Run() {
 	maxWidth, maxHeight := ebiten.Monitor().Size()
 	if config.CFG.WindowWidth == 0 {
 		config.CFG.WindowWidth = maxWidth
-		nf.maxWidth = maxWidth
 	}
 
 	if config.CFG.WindowHeight == 0 {
 		config.CFG.WindowHeight = maxHeight
-		nf.maxHeight = maxHeight
 	}
+
+	nf.maxWidth = config.CFG.WindowWidth
+	nf.maxHeight = config.CFG.WindowHeight
 
 	nf.img = image.NewRGBA(image.Rect(0, 0, nf.maxWidth, nf.maxHeight))
 
-	if config.CFG.WindowBgColor != "" {
+	if config.CFG.WindowBgColor != "00000000" {
 		r, g, b, a, err := RGBAstrToColor(config.CFG.WindowBgColor)
 		if err != nil {
 			log.Fatal(err)
@@ -284,6 +287,7 @@ func (nf *NeoFrame) Run() {
 		draw.Draw(nf.img, nf.img.Bounds(), &image.Uniform{c}, image.Pt(0, 0), draw.Src)
 	}
 
+	ebiten.SetWindowResizingMode(ebiten.WindowResizingModeEnabled)
 	ebiten.SetRunnableOnUnfocused(true)
 	ebiten.SetScreenClearedEveryFrame(false)
 	ebiten.SetVsyncEnabled(true)
@@ -296,7 +300,7 @@ func (nf *NeoFrame) Run() {
 
 	err := ebiten.RunGameWithOptions(nf, &ebiten.RunGameOptions{
 		InitUnfocused:     true,
-		ScreenTransparent: true,
+		ScreenTransparent: config.CFG.WindowBgColor == "00000000",
 		SkipTaskbar:       true,
 		X11ClassName:      name,
 		X11InstanceName:   name,
