@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"image"
@@ -38,9 +39,7 @@ func usage() {
 
 func shutdown(ret int) {
 	if config.CFG.ServerMode {
-		if !config.CFG.Silent {
-			fmt.Println("\r\nShutdown server")
-		}
+		fmt.Println("\r\nShutdown server")
 		os.Remove(config.CFG.UnixDomainSocket)
 	}
 	os.Exit(ret)
@@ -114,9 +113,7 @@ func UDSListener() {
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			if !config.CFG.Silent {
-				fmt.Println("failed to accept:", err)
-			}
+			fmt.Println("failed to accept:", err)
 			continue
 		}
 
@@ -148,7 +145,7 @@ func filterInput(r rune) (rune, bool) {
 
 var completer = readline.NewPrefixCompleter()
 
-func runCLI() {
+func runCMD() {
 	historyFile := filepath.Join(tmpDir, "neoframe.history")
 	rl, err := readline.NewEx(&readline.Config{
 		Prompt:          "> ",
@@ -188,7 +185,6 @@ func main() {
 	var cmd string
 
 	flag.BoolVar(&config.CFG.GetScreenInfo, "info", false, "Get screen size")
-	flag.BoolVar(&config.CFG.Silent, "silent", false, "Silent mode")
 	flag.BoolVar(&config.CFG.ServerMode, "server", false, "Server mode")
 	flag.StringVar(&config.CFG.UnixDomainSocket, "uds", uds, "Unix domain socket")
 	flag.StringVar(&cmd, "cmd", "", "Command to send to server")
@@ -207,38 +203,22 @@ func main() {
 	}
 
 	switch {
-	case config.CFG.GetScreenInfo:
-		width, height := nf.GetScreenSize()
-		if config.CFG.Silent {
-			fmt.Printf("%d %d\n", width, height)
-			return
-		}
-		fmt.Printf("NeoFrame %s\n", versionTag)
-		fmt.Printf("Screen size:\n\t%d\tpx width\n\t%d\tpx height\n", width, height)
-		fmt.Printf("Unix domain socket:\n\t%s\n", config.CFG.UnixDomainSocket)
-		return
 	case config.CFG.ServerMode:
 		_, err := os.Stat(config.CFG.UnixDomainSocket)
 		if err == nil {
 			fmt.Printf("Unix domain socket %s already exists, remove the file first\n", config.CFG.UnixDomainSocket)
 			shutdown(1)
 		}
-		if !config.CFG.Silent {
-			fmt.Println("Server mode")
-			fmt.Println("Unix domain socket:", config.CFG.UnixDomainSocket)
-
-		}
+		fmt.Println("Server mode")
+		fmt.Println("Unix domain socket:", config.CFG.UnixDomainSocket)
 
 		nf = neoframe.New()
-
 		le = luaengine.New(nf)
-
-		// veirifica se o arvuivo init.lua existe antes de compilar
 
 		hasInitFile := func() bool {
 			_, err = os.Stat("init.lua")
 			if err != nil {
-				if err == os.ErrNotExist {
+				if errors.Is(err, os.ErrNotExist) {
 					return false
 				}
 				log.Fatal(err)
@@ -252,16 +232,16 @@ func main() {
 				fmt.Println("failed to compile init.lua:", err)
 				shutdown(1)
 			}
-		}
 
-		err = le.InitState()
-		if err != nil {
-			fmt.Println("failed to init lua state:", err)
-			shutdown(1)
+			err = le.InitStateWithProto()
+			if err != nil {
+				fmt.Println("failed to init lua state:", err)
+				shutdown(1)
+			}
 		}
 
 		go UDSListener()
-		go runCLI()
+		go runCMD()
 		nf.Run()
 	case cmd != "":
 		conn := UDSClient()

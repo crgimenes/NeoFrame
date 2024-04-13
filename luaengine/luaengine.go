@@ -118,7 +118,7 @@ func (le *LuaExtender) doCompiledFile(L *lua.LState, proto *lua.FunctionProto) e
 }
 
 // InitState starts the lua interpreter with a script.
-func (le *LuaExtender) InitState() error {
+func (le *LuaExtender) InitStateWithProto() error {
 	return le.doCompiledFile(le.luaState, le.Proto)
 }
 
