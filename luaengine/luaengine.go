@@ -37,6 +37,7 @@ type Winsize struct {
 type Frame interface {
 	GetScreenSize() (width, height int)
 	SetWindowTitle(title string)
+	DrawLine(x1, y1, x2, y2 int, colorstr string) error
 }
 
 type AppCtrl interface {
@@ -62,8 +63,24 @@ func New(f Frame, ac AppCtrl) *LuaExtender {
 	le.luaState.SetGlobal("timer", le.luaState.NewFunction(le.timer))
 	le.luaState.SetGlobal("trigger", le.luaState.NewFunction(le.trigger))
 	le.luaState.SetGlobal("shutdown", le.luaState.NewFunction(le.Shutdown))
+	le.luaState.SetGlobal("setWindowTitle", le.luaState.NewFunction(le.SetWindowTitle))
+	le.luaState.SetGlobal("drawLine", le.luaState.NewFunction(le.DrawLine))
 
 	return le
+}
+
+func (le *LuaExtender) DrawLine(l *lua.LState) int {
+	x1 := l.ToInt(1)
+	y1 := l.ToInt(2)
+	x2 := l.ToInt(3)
+	y2 := l.ToInt(4)
+	colorstr := l.ToString(5)
+	err := le.Frame.DrawLine(x1, y1, x2, y2, colorstr)
+	if err != nil {
+		l.Push(lua.LString(err.Error()))
+		return 1
+	}
+	return 0
 }
 
 func (le *LuaExtender) Shutdown(l *lua.LState) int {

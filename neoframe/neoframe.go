@@ -19,8 +19,14 @@ const (
 	name = "NeoFrame"
 )
 
+type Leyer struct {
+	img    *image.RGBA
+	visibl bool
+}
+
 type NeoFrame struct {
-	img                 *image.RGBA
+	currentLayer        int
+	layer               []Leyer
 	maxWidth, maxHeight int
 }
 
@@ -40,7 +46,11 @@ func (nf *NeoFrame) Update() error {
 }
 
 func (nf *NeoFrame) Draw(screen *ebiten.Image) {
-	screen.WritePixels(nf.img.Pix)
+	for i := 0; i < len(nf.layer); i++ {
+		if nf.layer[i].visibl {
+			screen.WritePixels(nf.layer[i].img.Pix)
+		}
+	}
 }
 
 func RGBAstrToColor(str string) (r, g, b, a uint8, err error) {
@@ -90,8 +100,8 @@ func (nf *NeoFrame) SetBackgroudImage(path string) {
 		return
 	}
 
-	nf.img = image.NewRGBA(img.Bounds())
-	draw.Draw(nf.img, img.Bounds(), img, image.Pt(0, 0), draw.Src)
+	nf.layer[nf.currentLayer].img = image.NewRGBA(img.Bounds())
+	draw.Draw(nf.layer[nf.currentLayer].img, img.Bounds(), img, image.Pt(0, 0), draw.Src)
 	return
 }
 
@@ -103,7 +113,38 @@ func (nf *NeoFrame) SetBackgroudImageByData(data []byte) {
 }
 
 func (nf *NeoFrame) Clean() {
-	nf.img = image.NewRGBA(image.Rect(0, 0, nf.maxWidth, nf.maxHeight))
+	nf.layer[nf.currentLayer].img = image.NewRGBA(image.Rect(0, 0, nf.maxWidth, nf.maxHeight))
+}
+
+func (nf *NeoFrame) CleanLayer(layer int) {
+	if layer < 0 || layer >= len(nf.layer) {
+		return
+	}
+
+	nf.layer[layer].img = image.NewRGBA(image.Rect(0, 0, nf.maxWidth, nf.maxHeight))
+}
+
+func (nf *NeoFrame) SetLayer(layer int) {
+	if layer < 0 || layer >= len(nf.layer) {
+		return
+	}
+
+	nf.currentLayer = layer
+}
+
+func (nf *NeoFrame) CreateLayer() {
+	nf.layer = append(nf.layer, Leyer{
+		img:    image.NewRGBA(image.Rect(0, 0, nf.maxWidth, nf.maxHeight)),
+		visibl: true,
+	})
+}
+
+func (nf *NeoFrame) DeleteLayer(layer int) {
+	if layer < 0 || layer >= len(nf.layer) {
+		return
+	}
+
+	nf.layer = append(nf.layer[:layer], nf.layer[layer+1:]...)
 }
 
 func LoadImage(file string) (image.Image, error) {
@@ -126,7 +167,7 @@ func (nf *NeoFrame) SetBackgroudImageAt(file string, x, y int) error {
 		return err
 	}
 
-	draw.Draw(nf.img, img.Bounds().Add(image.Pt(x, y)), img, image.Pt(0, 0), draw.Src)
+	draw.Draw(nf.layer[nf.currentLayer].img, img.Bounds().Add(image.Pt(x, y)), img, image.Pt(0, 0), draw.Src)
 	return nil
 }
 
@@ -140,7 +181,7 @@ func (nf *NeoFrame) DrawBox(x, y, w, h int, colorstr string) error {
 
 	for i := x; i < x+w; i++ {
 		for j := y; j < y+h; j++ {
-			nf.img.Set(i, j, c)
+			nf.layer[nf.currentLayer].img.Set(i, j, c)
 		}
 	}
 
@@ -168,7 +209,7 @@ func (nf *NeoFrame) DrawLine(x1, y1, x2, y2 int, colorstr string) error {
 		}
 
 		for y := y1; y <= y2; y++ {
-			nf.img.Set(x1, y, c)
+			nf.layer[nf.currentLayer].img.Set(x1, y, c)
 		}
 	} else if dy == 0 {
 		if x1 > x2 {
@@ -176,7 +217,7 @@ func (nf *NeoFrame) DrawLine(x1, y1, x2, y2 int, colorstr string) error {
 		}
 
 		for x := x1; x <= x2; x++ {
-			nf.img.Set(x, y1, c)
+			nf.layer[nf.currentLayer].img.Set(x, y1, c)
 		}
 	} else {
 		if dx < 0 {
@@ -195,7 +236,7 @@ func (nf *NeoFrame) DrawLine(x1, y1, x2, y2 int, colorstr string) error {
 
 			for x := x1; x <= x2; x++ {
 				y := y1 + (x-x1)*(y2-y1)/(x2-x1)
-				nf.img.Set(x, y, c)
+				nf.layer[nf.currentLayer].img.Set(x, y, c)
 			}
 		} else {
 			if y1 > y2 {
@@ -205,7 +246,7 @@ func (nf *NeoFrame) DrawLine(x1, y1, x2, y2 int, colorstr string) error {
 
 			for y := y1; y <= y2; y++ {
 				x := x1 + (y-y1)*(x2-x1)/(y2-y1)
-				nf.img.Set(x, y, c)
+				nf.layer[nf.currentLayer].img.Set(x, y, c)
 			}
 
 		}
@@ -223,7 +264,7 @@ func (nf *NeoFrame) DrawPixel(x, y int, colorstr string) error {
 		return err
 	}
 
-	nf.img.Set(x, y, color.RGBA{r, g, b, a})
+	nf.layer[nf.currentLayer].img.Set(x, y, color.RGBA{r, g, b, a})
 	return nil
 }
 
@@ -241,24 +282,24 @@ func (nf *NeoFrame) DrawGrid(ha, va int, colorstr string) error {
 	// draw horizontal lines
 	for i := 0; i < nf.maxHeight; i += va {
 		for j := 0; j < nf.maxWidth; j++ {
-			nf.img.Set(j, i, c)
+			nf.layer[nf.currentLayer].img.Set(j, i, c)
 		}
 	}
 
 	// draw vertical lines
 	for i := 0; i < nf.maxWidth; i += ha {
 		for j := 0; j < nf.maxHeight; j++ {
-			nf.img.Set(i, j, c)
+			nf.layer[nf.currentLayer].img.Set(i, j, c)
 		}
 	}
-
-	draw.Draw(nf.img, nf.img.Bounds(), nf.img, image.Pt(0, 0), draw.Src)
 
 	return nil
 }
 
 func (nf *NeoFrame) CopyImageToScreen(img image.Image, x, y int) {
-	draw.Draw(nf.img, img.Bounds().Add(image.Pt(x, y)), img, image.Pt(0, 0), draw.Src)
+	draw.Draw(
+		nf.layer[nf.currentLayer].img,
+		img.Bounds().Add(image.Pt(x, y)), img, image.Pt(0, 0), draw.Src)
 }
 
 func (nf *NeoFrame) SetWindowTitle(title string) {
@@ -278,7 +319,9 @@ func (nf *NeoFrame) Run() {
 	nf.maxWidth = config.CFG.WindowWidth
 	nf.maxHeight = config.CFG.WindowHeight
 
-	nf.img = image.NewRGBA(image.Rect(0, 0, nf.maxWidth, nf.maxHeight))
+	nf.layer = make([]Leyer, 1)
+	nf.layer[0].visibl = true
+	nf.layer[0].img = image.NewRGBA(image.Rect(0, 0, nf.maxWidth, nf.maxHeight))
 
 	if config.CFG.WindowBgColor != "00000000" {
 		r, g, b, a, err := RGBAstrToColor(config.CFG.WindowBgColor)
@@ -288,7 +331,11 @@ func (nf *NeoFrame) Run() {
 
 		c := color.RGBA{r, g, b, a}
 
-		draw.Draw(nf.img, nf.img.Bounds(), &image.Uniform{c}, image.Pt(0, 0), draw.Src)
+		draw.Draw(nf.layer[nf.currentLayer].img,
+			nf.layer[nf.currentLayer].img.Bounds(),
+			&image.Uniform{c},
+			image.Pt(0, 0),
+			draw.Src)
 	}
 
 	ebiten.SetWindowResizingMode(ebiten.WindowResizingModeEnabled)
