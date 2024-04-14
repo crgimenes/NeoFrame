@@ -10,13 +10,21 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/golang/freetype"
 	"github.com/hajimehoshi/ebiten/v2"
+	"golang.org/x/image/font"
 
+	_ "embed"
 	_ "image/png"
 )
 
 const (
 	name = "NeoFrame"
+)
+
+var (
+	//go:embed assets/3270-Regular.ttf
+	fontBytes []byte
 )
 
 type Leyer struct {
@@ -254,8 +262,36 @@ func (nf *NeoFrame) DrawLine(x1, y1, x2, y2 int, colorstr string) error {
 	return nil
 }
 
-func (nf *NeoFrame) DrawText(x, y, w, h int, text string, fgColor, bgColor string) error {
-	return nil
+func (nf *NeoFrame) DrawText(x, y int, size float64, textstr string, fgColor string) error {
+
+	log.Println("Drawing text:", textstr, "at x:", x, "y:", y, "size:", size, "color:", fgColor)
+
+	r, g, b, a, err := RGBAstrToColor(fgColor)
+	if err != nil {
+		return err
+	}
+
+	fg := image.NewUniform(color.RGBA{r, g, b, a})
+
+	f, err := freetype.ParseFont(fontBytes)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
+	c := freetype.NewContext()
+	c.SetDPI(72)
+	c.SetFont(f)
+	c.SetFontSize(size)
+	c.SetClip(nf.layer[nf.currentLayer].img.Bounds())
+	c.SetDst(nf.layer[nf.currentLayer].img)
+	c.SetSrc(fg)
+	c.SetHinting(font.HintingFull)
+
+	pt := freetype.Pt(x, y+int(c.PointToFixed(size)>>6))
+	_, err = c.DrawString(textstr, pt)
+
+	return err
 }
 
 func (nf *NeoFrame) DrawPixel(x, y int, colorstr string) error {

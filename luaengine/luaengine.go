@@ -38,6 +38,7 @@ type Frame interface {
 	GetScreenSize() (width, height int)
 	SetWindowTitle(title string)
 	DrawLine(x1, y1, x2, y2 int, colorstr string) error
+	DrawText(x, y int, size float64, textstr string, fgColor string) error
 }
 
 type AppCtrl interface {
@@ -65,8 +66,25 @@ func New(f Frame, ac AppCtrl) *LuaExtender {
 	le.luaState.SetGlobal("shutdown", le.luaState.NewFunction(le.Shutdown))
 	le.luaState.SetGlobal("setWindowTitle", le.luaState.NewFunction(le.SetWindowTitle))
 	le.luaState.SetGlobal("drawLine", le.luaState.NewFunction(le.DrawLine))
+	le.luaState.SetGlobal("drawText", le.luaState.NewFunction(le.DrawText))
 
 	return le
+}
+
+func (le *LuaExtender) DrawText(l *lua.LState) int {
+
+	x := l.ToInt(1)
+	y := l.ToInt(2)
+	size := float64(l.ToNumber(3))
+	textstr := l.ToString(4)
+	fgColor := l.ToString(5)
+
+	err := le.Frame.DrawText(x, y, size, textstr, fgColor)
+	if err != nil {
+		log.Println(err)
+	}
+
+	return 0
 }
 
 func (le *LuaExtender) DrawLine(l *lua.LState) int {
