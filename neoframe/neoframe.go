@@ -263,8 +263,7 @@ func (nf *NeoFrame) DrawLine(x1, y1, x2, y2 int, colorstr string) error {
 }
 
 func (nf *NeoFrame) DrawText(x, y int, size float64, textstr string, fgColor string) error {
-
-	log.Println("Drawing text:", textstr, "at x:", x, "y:", y, "size:", size, "color:", fgColor)
+	// TODO: reimplement using etxt https://github.com/tinne26/etxt
 
 	r, g, b, a, err := RGBAstrToColor(fgColor)
 	if err != nil {
@@ -312,8 +311,6 @@ func (nf *NeoFrame) DrawGrid(ha, va int, colorstr string) error {
 	}
 
 	c := color.RGBA{r, g, b, a}
-
-	log.Println("Drawing grid with horizontal:", ha, "vertical:", va, "color:", c)
 
 	// draw horizontal lines
 	for i := 0; i < nf.maxHeight; i += va {
