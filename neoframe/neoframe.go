@@ -12,6 +12,7 @@ import (
 
 	"github.com/golang/freetype"
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"golang.org/x/image/font"
 
 	_ "embed"
@@ -59,6 +60,12 @@ func (nf *NeoFrame) Draw(screen *ebiten.Image) {
 			screen.WritePixels(nf.layer[i].img.Pix)
 		}
 	}
+}
+
+func (nf *NeoFrame) DebugPrint(str string) {
+	e := ebiten.NewImage(nf.maxWidth, nf.maxHeight)
+	ebitenutil.DebugPrint(e, str)
+	draw.Draw(nf.layer[nf.currentLayer].img, e.Bounds(), e, image.Pt(0, 0), draw.Src)
 }
 
 func RGBAstrToColor(str string) (r, g, b, a uint8, err error) {
@@ -120,11 +127,11 @@ func (nf *NeoFrame) GetScreenSize() (width, height int) {
 func (nf *NeoFrame) SetBackgroudImageByData(data []byte) {
 }
 
-func (nf *NeoFrame) Clean() {
+func (nf *NeoFrame) Clear() {
 	nf.layer[nf.currentLayer].img = image.NewRGBA(image.Rect(0, 0, nf.maxWidth, nf.maxHeight))
 }
 
-func (nf *NeoFrame) CleanLayer(layer int) {
+func (nf *NeoFrame) ClearLayer(layer int) {
 	if layer < 0 || layer >= len(nf.layer) {
 		return
 	}

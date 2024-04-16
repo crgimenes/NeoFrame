@@ -35,10 +35,11 @@ type Winsize struct {
 }
 
 type Frame interface {
-	GetScreenSize() (width, height int)
-	SetWindowTitle(title string)
+	DebugPrint(str string)
 	DrawLine(x1, y1, x2, y2 int, colorstr string) error
 	DrawText(x, y int, size float64, textstr string, fgColor string) error
+	GetScreenSize() (width, height int)
+	SetWindowTitle(title string)
 }
 
 type AppCtrl interface {
@@ -55,20 +56,27 @@ func New(f Frame, ac AppCtrl) *LuaExtender {
 	le.triggerList = make(map[string]*lua.LFunction)
 	le.luaState = lua.NewState()
 	le.luaState.SetGlobal("clearTriggers", le.luaState.NewFunction(le.ClearTriggers))
+	le.luaState.SetGlobal("debugPrint", le.luaState.NewFunction(le.DebugPrint))
+	le.luaState.SetGlobal("drawLine", le.luaState.NewFunction(le.DrawLine))
+	le.luaState.SetGlobal("drawText", le.luaState.NewFunction(le.DrawText))
 	le.luaState.SetGlobal("fileExists", le.luaState.NewFunction(le.fileExists))
 	le.luaState.SetGlobal("getScreenSize", le.luaState.NewFunction(le.getScreenSize))
 	le.luaState.SetGlobal("logf", le.luaState.NewFunction(le.logf))
 	le.luaState.SetGlobal("pwd", le.luaState.NewFunction(le.pwd))
 	le.luaState.SetGlobal("readFile", le.luaState.NewFunction(le.readFile))
 	le.luaState.SetGlobal("rmTrigger", le.luaState.NewFunction(le.removeTrigger))
+	le.luaState.SetGlobal("setWindowTitle", le.luaState.NewFunction(le.SetWindowTitle))
+	le.luaState.SetGlobal("shutdown", le.luaState.NewFunction(le.Shutdown))
 	le.luaState.SetGlobal("timer", le.luaState.NewFunction(le.timer))
 	le.luaState.SetGlobal("trigger", le.luaState.NewFunction(le.trigger))
-	le.luaState.SetGlobal("shutdown", le.luaState.NewFunction(le.Shutdown))
-	le.luaState.SetGlobal("setWindowTitle", le.luaState.NewFunction(le.SetWindowTitle))
-	le.luaState.SetGlobal("drawLine", le.luaState.NewFunction(le.DrawLine))
-	le.luaState.SetGlobal("drawText", le.luaState.NewFunction(le.DrawText))
 
 	return le
+}
+
+func (le *LuaExtender) DebugPrint(l *lua.LState) int {
+	str := l.ToString(1)
+	le.Frame.DebugPrint(str)
+	return 0
 }
 
 func (le *LuaExtender) DrawText(l *lua.LState) int {
