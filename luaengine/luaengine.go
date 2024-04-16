@@ -40,6 +40,7 @@ type Frame interface {
 	DrawText(x, y int, size float64, textstr string, fgColor string) error
 	GetScreenSize() (width, height int)
 	SetWindowTitle(title string)
+	SetWindowPosition(x, y int)
 }
 
 type AppCtrl interface {
@@ -69,8 +70,16 @@ func New(f Frame, ac AppCtrl) *LuaExtender {
 	le.luaState.SetGlobal("shutdown", le.luaState.NewFunction(le.Shutdown))
 	le.luaState.SetGlobal("timer", le.luaState.NewFunction(le.timer))
 	le.luaState.SetGlobal("trigger", le.luaState.NewFunction(le.trigger))
+	le.luaState.SetGlobal("setWindowPosition", le.luaState.NewFunction(le.SetWindowPosition))
 
 	return le
+}
+
+func (le *LuaExtender) SetWindowPosition(l *lua.LState) int {
+	x := l.ToInt(1)
+	y := l.ToInt(2)
+	le.Frame.SetWindowPosition(x, y)
+	return 0
 }
 
 func (le *LuaExtender) DebugPrint(l *lua.LState) int {

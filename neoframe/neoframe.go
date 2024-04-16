@@ -346,6 +346,10 @@ func (nf *NeoFrame) SetWindowTitle(title string) {
 	ebiten.SetWindowTitle(title)
 }
 
+func (nf *NeoFrame) SetWindowPosition(x, y int) {
+	ebiten.SetWindowPosition(x, y)
+}
+
 func (nf *NeoFrame) Run() {
 	maxWidth, maxHeight := ebiten.Monitor().Size()
 	if config.CFG.WindowWidth == 0 {
