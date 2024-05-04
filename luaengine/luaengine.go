@@ -89,7 +89,8 @@ func (le *LuaExtender) DebugPrint(l *lua.LState) int {
 }
 
 func (le *LuaExtender) DrawText(l *lua.LState) int {
-
+	// drawText(x, y, size, text, fgColor)
+	// drawText(10, 10, 12, "Hello World", "FFFFFFFF")
 	x := l.ToInt(1)
 	y := l.ToInt(2)
 	size := float64(l.ToNumber(3))
