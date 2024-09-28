@@ -350,7 +350,7 @@ func (nf *NeoFrame) SetWindowPosition(x, y int) {
 	ebiten.SetWindowPosition(x, y)
 }
 
-func (nf *NeoFrame) Run() {
+func (nf *NeoFrame) ConfigureMonitorSize() {
 	maxWidth, maxHeight := ebiten.Monitor().Size()
 	if config.CFG.WindowWidth == 0 {
 		config.CFG.WindowWidth = maxWidth
@@ -362,7 +362,9 @@ func (nf *NeoFrame) Run() {
 
 	nf.maxWidth = config.CFG.WindowWidth
 	nf.maxHeight = config.CFG.WindowHeight
+}
 
+func (nf *NeoFrame) Run() {
 	nf.layer = make([]Leyer, 1)
 	nf.layer[0].visibl = true
 	nf.layer[0].img = image.NewRGBA(image.Rect(0, 0, nf.maxWidth, nf.maxHeight))

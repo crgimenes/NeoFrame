@@ -42,7 +42,7 @@ type AppCtrl struct{}
 
 func (ac *AppCtrl) Shutdown(ret int) {
 	if config.CFG.ServerMode {
-		fmt.Println("\r\nShutdown server")
+		fmt.Println("Shutdown server")
 		os.Remove(config.CFG.UnixDomainSocket)
 	}
 	os.Exit(ret)
@@ -214,6 +214,12 @@ func main() {
 	}
 
 	switch {
+	case config.CFG.GetScreenInfo:
+		nf = neoframe.New()
+		nf.ConfigureMonitorSize()
+		width, height := nf.GetScreenSize()
+		fmt.Printf("Width: %d, Height: %d\n", width, height)
+
 	case config.CFG.ServerMode:
 		_, err := os.Stat(config.CFG.UnixDomainSocket)
 		if err == nil {
@@ -252,7 +258,7 @@ func main() {
 		}
 
 		go UDSListener()
-		go runCMD()
+		runCMD()
 		nf.Run()
 	case cmd != "":
 		conn := UDSClient()
