@@ -19,6 +19,8 @@ import (
 	"github.com/ergochat/readline"
 )
 
+type AppCtrl struct{}
+
 const (
 	tmpDir = "/tmp"
 )
@@ -28,6 +30,7 @@ var (
 	le         *luaengine.LuaExtender
 	nf         *neoframe.NeoFrame
 	ac         *AppCtrl = &AppCtrl{}
+	completer           = readline.NewPrefixCompleter()
 )
 
 func usage() {
@@ -37,8 +40,6 @@ func usage() {
 	fmt.Println("Options:")
 	flag.PrintDefaults()
 }
-
-type AppCtrl struct{}
 
 func (ac *AppCtrl) Shutdown(ret int) {
 	if config.CFG.ServerMode {
@@ -146,8 +147,6 @@ func filterInput(r rune) (rune, bool) {
 	return r, true
 }
 
-var completer = readline.NewPrefixCompleter()
-
 func runCMD() {
 	historyFile := filepath.Join(tmpDir, "neoframe.history")
 	rl, err := readline.NewEx(&readline.Config{
@@ -173,6 +172,11 @@ func runCMD() {
 		line, err := rl.ReadLine()
 		if err != nil {
 			ac.Shutdown(1)
+			return
+		}
+
+		if line == "exit" {
+			ac.Shutdown(0)
 			return
 		}
 
