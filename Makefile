@@ -11,5 +11,5 @@ build:
 	CGO_ENABLED=1 go build $(BUILD_FLAGS) -o $(BINARY_NAME) .
 
 clean:
-	rm -f $(BINARY_NAME) $(BINARY_NAME)-*
+	rm -f $(BINARY_NAME) $(BINARY_NAME)-* neoframe.history
 
