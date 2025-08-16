@@ -4,7 +4,7 @@ A minimal on-screen overlay that creates a transparent, always‑on‑top window
 
 > Status: early prototype intended for macOS and Windows; Linux may work but is not part of the release targets yet.
 
-![Screenshot](ng.gif)
+![NeoFrame](https://github.com/crgimenes/NeoFrame/blob/trunk/nf.gif)
 
 ## Features
 
