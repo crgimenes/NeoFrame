@@ -4,6 +4,8 @@ A minimal on-screen overlay that creates a transparent, always‑on‑top window
 
 > Status: early prototype intended for macOS and Windows; Linux may work but is not part of the release targets yet.
 
+![Screenshot](ng.gif)
+
 ## Features
 
 - Transparent, click‑through overlay window (stays above all apps).
