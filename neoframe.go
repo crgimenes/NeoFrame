@@ -74,39 +74,6 @@ var (
 	fontBytes []byte
 )
 
-/*
-	CFG                    = &Config{}
-	buttons                = []*button{}
-	paintbrush        bool = false
-	eraser            bool = false
-	buttonBackground  *image.RGBA
-	currentPaintColor string = ColorRed
-	mouseX            int
-	mouseY            int
-	colorPalette      = []string{
-		ColorBlack,
-		ColorRed,
-		ColorGreen,
-		ColorYellow,
-		ColorBlue,
-		ColorMagenta,
-		ColorCyan,
-		ColorWhite,
-		ColorGray,
-		ColorLightGray,
-		ColorDarkGray,
-		ColorLightRed,
-		ColorLightGreen,
-		ColorLightYellow,
-		ColorLightBlue,
-		ColorLightMagenta,
-		ColorLightCyan,
-		ColorLightWhite,
-		ColorTransparent,
-	}
-)
-*/
-
 type Leyer struct {
 	img    *image.RGBA
 	visibl bool
@@ -201,11 +168,11 @@ func (nf *NeoFrame) Update() error {
 	}
 
 	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
-		if (!nf.paintbrush ||
+		if (!nf.paintbrush &&
 			!nf.eraser) &&
 			nf.moseOutsideBounds() {
 			nf.HideTools()
-			nf.SetMousePassthrough(false)
+			nf.SetMousePassthrough(true)
 			return nil
 		}
 	}
@@ -219,7 +186,13 @@ func (nf *NeoFrame) Update() error {
 				}
 			*/
 
-			err := nf.DrawLine(nf.CFG.oldMouseX, nf.CFG.oldMouseY, x, y, 3, nf.currentPaintColor)
+			err := nf.DrawLine(
+				nf.CFG.oldMouseX,
+				nf.CFG.oldMouseY,
+				x,
+				y,
+				3,
+				nf.currentPaintColor)
 			if err != nil {
 				return err
 			}
@@ -790,12 +763,13 @@ func (nf *NeoFrame) Run() {
 			draw.Src)
 	}
 
+	nf.SetMousePassthrough(true)
+
 	ebiten.SetRunnableOnUnfocused(true)
 	ebiten.SetScreenClearedEveryFrame(false)
 	ebiten.SetVsyncEnabled(true)
 	ebiten.SetWindowDecorated(nf.CFG.WindowDecorated)
 	ebiten.SetWindowFloating(true)
-	ebiten.SetWindowMousePassthrough(nf.CFG.MousePassthrough)
 	ebiten.SetWindowPosition(nf.CFG.WindowX, nf.CFG.WindowY)
 	ebiten.SetWindowResizingMode(ebiten.WindowResizingModeEnabled)
 	ebiten.SetWindowSize(nf.maxWidth, nf.maxHeight)
