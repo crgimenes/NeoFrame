@@ -3,8 +3,7 @@ module nf
 go 1.26
 
 require (
-	github.com/crgimenes/minigui v0.0.0-20260625044448-ada0179a2492
-	github.com/ergochat/readline v0.1.3
+	github.com/crgimenes/minigui v0.0.0-20260625050341-fedf1f5ec5d0
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0
 	github.com/hajimehoshi/ebiten/v2 v2.10.0-alpha.11
 	golang.org/x/image v0.43.0

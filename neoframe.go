@@ -36,7 +36,6 @@ type Config struct {
 	MousePassthrough bool
 	oldMouseX        int
 	oldMouseY        int
-	toolsVisible     bool
 }
 
 const (
@@ -78,6 +77,10 @@ type NeoFrame struct {
 	colorPalette      []string
 	currentLayer      int
 	currentPaintColor string
+	cmdRect           image.Rectangle
+	cmdStatus         string
+	cmdText           string
+	cmdVisible        bool
 	eraser            bool
 	fontBytes         []byte
 	gui               minigui.Context
@@ -86,6 +89,7 @@ type NeoFrame struct {
 	maxWidth          int
 	mouseX            int
 	mouseY            int
+	panelRect         image.Rectangle
 	paintbrush        bool
 }
 
@@ -93,49 +97,39 @@ func (nf *NeoFrame) Layout(outsideWidth, outsideHeight int) (int, int) {
 	return nf.maxWidth, nf.maxHeight
 }
 
-// openTools reveals the toolbar and grabs the mouse so the panel is clickable.
-func (nf *NeoFrame) openTools() {
-	nf.CFG.toolsVisible = true
-	nf.SetMousePassthrough(false)
-}
-
-// dismissTools hides the toolbar and returns to click-through with no active tool.
-func (nf *NeoFrame) dismissTools() {
-	nf.CFG.toolsVisible = false
-	nf.paintbrush = false
-	nf.eraser = false
-	nf.SetMousePassthrough(true)
-}
-
-// armTool hides the toolbar but keeps the window grabbing the mouse so the
-// just-selected tool can paint on the canvas.
-func (nf *NeoFrame) armTool() {
-	nf.CFG.toolsVisible = false
-	nf.SetMousePassthrough(false)
-}
-
-// updateTools builds and handles the immediate-mode toolbar for one frame: tool
-// toggles, clear/close and the color palette as swatches.
-func (nf *NeoFrame) updateTools() {
+// buildTools lays out the always-visible toolbar panel for one frame and records
+// its screen rectangle, so Update can keep it clickable in the click-through
+// overlay (see SetMousePassthrough).
+func (nf *NeoFrame) buildTools() {
 	nf.gui.Begin(minigui.InputFromEbiten(), 8, 8)
-	nf.gui.SetItemWidth(72)
+	nf.gui.BeginPanel("NeoFrame", 8, 8)
+	nf.gui.SetItemWidth(80)
 
+	// Draw and Erase are toggles: clicking the active one releases it (like Done).
+	// Entering Draw paints with the current color, which defaults to red and
+	// remembers the last swatch picked.
 	if nf.gui.Toggle("draw", "Draw", nf.paintbrush) {
-		nf.paintbrush = true
-		nf.eraser = false
-		nf.armTool()
+		if nf.paintbrush {
+			nf.releaseTool()
+		} else {
+			nf.paintbrush, nf.eraser = true, false
+		}
 	}
 	if nf.gui.Toggle("erase", "Erase", nf.eraser) {
-		nf.eraser = true
-		nf.paintbrush = false
-		nf.armTool()
+		if nf.eraser {
+			nf.releaseTool()
+		} else {
+			nf.eraser, nf.paintbrush = true, false
+		}
 	}
 	if nf.gui.Button("clear", "Clear") {
 		nf.Clear()
-		nf.dismissTools()
 	}
-	if nf.gui.Button("close", "Close") {
-		nf.dismissTools()
+	if nf.gui.Toggle("cmd", "Cmd", nf.cmdVisible) {
+		nf.cmdVisible = !nf.cmdVisible
+	}
+	if nf.gui.Button("done", "Done") {
+		nf.releaseTool()
 	}
 
 	const swatchCols = 4
@@ -149,14 +143,66 @@ func (nf *NeoFrame) updateTools() {
 			nf.currentPaintColor = hex
 			nf.paintbrush = true
 			nf.eraser = false
-			nf.armTool()
 		}
 		if (i+1)%swatchCols != 0 && i != len(nf.colorPalette)-1 {
 			nf.gui.SameLine()
 		}
 	}
 
+	nf.panelRect = nf.gui.EndPanel()
+
+	if nf.cmdVisible {
+		nf.buildCmdPanel()
+	} else {
+		nf.cmdRect = image.Rectangle{}
+	}
+
 	nf.gui.End()
+}
+
+// buildCmdPanel lays out the command panel — a text field to type commands into —
+// to the right of the toolbar, and records its rectangle. Pressing Enter or the
+// Run button executes the command.
+func (nf *NeoFrame) buildCmdPanel() {
+	x := float64(nf.panelRect.Max.X + 12)
+	nf.gui.BeginPanel("Commands", x, 8)
+	nf.gui.TextField("cmd", &nf.cmdText)
+	run := nf.gui.Button("run", "Run")
+	if run || nf.gui.Submitted("cmd") {
+		nf.runCommand(nf.cmdText)
+		nf.cmdText = ""
+	}
+	if nf.cmdStatus != "" {
+		nf.gui.Label(nf.cmdStatus)
+	}
+	nf.cmdRect = nf.gui.EndPanel()
+}
+
+// runCommand executes a typed command. The set is intentionally small while the
+// app moves to a graphical workflow; more can be added later.
+func (nf *NeoFrame) runCommand(line string) {
+	line = strings.TrimSpace(line)
+	if line == "" {
+		return
+	}
+	switch line {
+	case "clear", "cls":
+		nf.Clear()
+		nf.cmdStatus = "cleared"
+	case "help":
+		nf.cmdStatus = "commands: clear, help, exit"
+	case "exit", "quit", "q":
+		os.Exit(0)
+	default:
+		nf.cmdStatus = "unknown command: " + line
+	}
+}
+
+// releaseTool deselects the active tool, returning to the idle state where the
+// overlay is click-through and the desktop is usable again.
+func (nf *NeoFrame) releaseTool() {
+	nf.paintbrush = false
+	nf.eraser = false
 }
 
 func (nf *NeoFrame) Update() error {
@@ -164,21 +210,19 @@ func (nf *NeoFrame) Update() error {
 	nf.mouseX, nf.mouseY = x, y
 
 	if ebiten.IsKeyPressed(ebiten.KeyEscape) {
-		nf.dismissTools()
-		nf.CFG.oldMouseX, nf.CFG.oldMouseY = x, y
-		return nil
+		nf.releaseTool()
 	}
 
-	// The top-left hot-corner reveals the toolbar.
-	if x < 10 && y < 10 {
-		nf.openTools()
-	}
+	// The toolbar panel is always visible: build it every frame and remember its
+	// rectangle for the cursor-over-panel test below.
+	nf.buildTools()
 
-	if nf.CFG.toolsVisible {
-		nf.updateTools()
-	} else if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
-		// Paint only while the toolbar is hidden, so the panel never bakes into
-		// the canvas; the toolbar is an overlay drawn on top in Draw.
+	tool := nf.paintbrush || nf.eraser
+	overPanel := image.Pt(x, y).In(nf.panelRect) || image.Pt(x, y).In(nf.cmdRect)
+
+	// Paint only with a tool active and the cursor off the panel, so clicking the
+	// toolbar never leaves a mark on the canvas.
+	if tool && !overPanel && ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
 		if nf.paintbrush {
 			err := nf.DrawLine(nf.CFG.oldMouseX, nf.CFG.oldMouseY, x, y, 3, nf.currentPaintColor)
 			if err != nil {
@@ -193,6 +237,11 @@ func (nf *NeoFrame) Update() error {
 		}
 	}
 
+	// Dynamic passthrough simulates a per-region hit area on a window-wide flag:
+	// the overlay grabs the mouse while a tool is active or the cursor is over the
+	// panel, and is click-through (desktop usable) otherwise.
+	nf.SetMousePassthrough(!tool && !overPanel)
+
 	nf.CFG.oldMouseX = x
 	nf.CFG.oldMouseY = y
 
@@ -205,9 +254,7 @@ func (nf *NeoFrame) Draw(screen *ebiten.Image) {
 			screen.WritePixels(nf.layer[i].img.Pix)
 		}
 	}
-	if nf.CFG.toolsVisible {
-		nf.gui.Render(screen)
-	}
+	nf.gui.Render(screen)
 }
 
 func (nf *NeoFrame) DebugPrint(str string) {
@@ -337,6 +384,9 @@ func LoadImage(file string) (image.Image, error) {
 }
 
 func (nf *NeoFrame) SetMousePassthrough(enabled bool) {
+	if enabled == nf.CFG.MousePassthrough {
+		return // avoid hammering the window API; Update calls this every frame
+	}
 	nf.CFG.MousePassthrough = enabled
 	ebiten.SetWindowMousePassthrough(enabled)
 }

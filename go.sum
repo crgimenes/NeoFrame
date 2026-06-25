@@ -1,13 +1,11 @@
-github.com/crgimenes/minigui v0.0.0-20260625044448-ada0179a2492 h1:AMpeGcymlG/XMerIErFLsg/g14VdxCKBSpsq4roa7Pc=
-github.com/crgimenes/minigui v0.0.0-20260625044448-ada0179a2492/go.mod h1:2er42EGduIg293DZC4QmfHFNSXOM6xLBk/iKaYblq/g=
+github.com/crgimenes/minigui v0.0.0-20260625050341-fedf1f5ec5d0 h1:7RsrRXa4gNgnclKo7ixmmq889x6MVnGmUi5eHyFsiP0=
+github.com/crgimenes/minigui v0.0.0-20260625050341-fedf1f5ec5d0/go.mod h1:2er42EGduIg293DZC4QmfHFNSXOM6xLBk/iKaYblq/g=
 github.com/ebitengine/gomobile v0.0.0-20260211053922-3d992dae95d1 h1:U8WldvN7/4cgo65U2fr2urv43/yhqYOK5FegFPPfI4M=
 github.com/ebitengine/gomobile v0.0.0-20260211053922-3d992dae95d1/go.mod h1:J7sDBRQG9pJGMa9Z+h8l3flwk0yEKDzWeR57vA1LI5U=
 github.com/ebitengine/hideconsole v1.0.0 h1:5J4U0kXF+pv/DhiXt5/lTz0eO5ogJ1iXb8Yj1yReDqE=
 github.com/ebitengine/hideconsole v1.0.0/go.mod h1:hTTBTvVYWKBuxPr7peweneWdkUwEuHuB3C1R/ielR1A=
 github.com/ebitengine/purego v0.11.0-alpha.5 h1:s+lQh9c3BJAETz8ZKm6C+v2XOhB/SMSDWJW6PVQi2e0=
 github.com/ebitengine/purego v0.11.0-alpha.5/go.mod h1:iIjxzd6CiRiOG0UyXP+V1+jWqUXVjPKLAI0mRfJZTmQ=
-github.com/ergochat/readline v0.1.3 h1:/DytGTmwdUJcLAe3k3VJgowh5vNnsdifYT6uVaf4pSo=
-github.com/ergochat/readline v0.1.3/go.mod h1:o3ux9QLHLm77bq7hDB21UTm6HlV2++IPDMfIfKDuOgY=
 github.com/go-text/typesetting v0.3.5-0.20260328164731-48df487c1500 h1:l7639IpdOGEudiCMSyhyqg/floLzrSMQ5NTt8biUa8E=
 github.com/go-text/typesetting v0.3.5-0.20260328164731-48df487c1500/go.mod h1:yW47fmJYxJsPcyNWEOGM2lNx766ZKw0cilos3XaD5YY=
 github.com/go-text/typesetting-utils v0.0.0-20260327125527-fbf04b32d9ad h1:J6fi06yzug4KkyQo0hK7UZVFBIlCh7iaG38sGq7THaY=
