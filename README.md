@@ -1,17 +1,17 @@
 # NeoFrame (nf)
 
-A minimal on-screen overlay that creates a transparent, always‑on‑top window which lets normal mouse and keyboard input pass through. When the cursor touches the **top‑left corner**, a small toolbar appears so you can pick a color and draw on the screen or select an eraser. A simple command prompt is also available with basic commands (e.g., `clear`, `exit`).
+A minimal on-screen overlay that creates a transparent, always‑on‑top window which lets normal mouse and keyboard input pass through. An always‑visible toolbar window lets you pick a color and draw on the screen or erase; **Esc** or **Done** returns control to the desktop. A command window (the **Cmd** button) offers basic commands (e.g., `clear`, `exit`). The UI is built with [minigui](https://github.com/crgimenes/minigui).
 
-> Status: early prototype intended for macOS and Windows; Linux may work but is not part of the release targets yet.
+> Status: early prototype. Released for macOS (signed, notarized universal app), Windows, and Linux.
 
 ![NeoFrame](https://github.com/crgimenes/NeoFrame/blob/trunk/nf.gif)
 
 ## Features
 
 - Transparent, click‑through overlay window (stays above all apps).
-- Hot‑corner (**top‑left**) toolbar for quick tool selection.
+- Always‑visible, draggable toolbar window for tool and color selection.
 - Freehand drawing with color selection and an eraser.
-- Basic terminal prompt with `clear` and `exit`.
+- In‑app command window (`clear`, `help`, `exit`).
 - Skips taskbar / dock and uses a window class/name for X11 when available.
 - Auto-detects monitor size on startup.
 
@@ -24,8 +24,10 @@ Requirements:
   [purego](https://github.com/ebitengine/purego), so `CGO_ENABLED=0` builds
   natively (no Xcode or MinGW). Linux still requires CGO and the X11 dev
   libraries, and is not a release target yet.
-- Module deps are managed via `go.mod` (Ebitengine v2.10, FreeType, x/image,
-  readline).
+- Module deps are managed via `go.mod`: Ebitengine v2.10 plus the sibling
+  packages [`minigui`](https://github.com/crgimenes/minigui) (UI toolkit) and
+  [`native`](https://github.com/crgimenes/native) (clipboard), and FreeType and
+  x/image.
 
 Quick build:
 
@@ -37,7 +39,19 @@ make build
 CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o nf .
 ```
 
-Cross builds (macOS/Windows) are automated by `release.sh` (requires a `GITHUB_TOKEN`; optional Apple Developer ID signing).
+## Release
+
+`release.sh` (run on a macOS host, from a clean worktree on a Git tag) builds a
+**signed, notarized macOS universal `.app`** (amd64 + arm64 via `lipo`, hardened
+runtime, stapled) plus the Windows binaries (386/amd64/arm64, CGo‑free), then
+creates the GitHub release. Linux binaries (amd64 + arm64, built with CGO on
+native runners) are produced by the `release-linux` GitHub Actions workflow when
+the release is published. The `ci` workflow tests on Linux and compile‑checks the
+macOS/Windows cross‑builds on every push and pull request.
+
+Requires `APPLE_DEVELOPER_ID` (a Developer ID Application certificate) and
+`APPLE_NOTARY_PROFILE` (notarytool credentials stored in Keychain). The macOS app
+is an accessory overlay (`LSUIElement`), so it has no Dock icon.
 
 ## Run
 ```sh
@@ -46,10 +60,14 @@ Cross builds (macOS/Windows) are automated by `release.sh` (requires a `GITHUB_T
 
 Behavior:
 
-- The overlay starts transparent and on top of other windows.
-- Move the mouse to the **top‑left corner** to reveal the toolbar.
-- Select a color to draw; choose the eraser to remove strokes.
-- Use the prompt for `clear` (wipe drawings) or `exit` (quit).
+- The overlay starts transparent and on top of other windows, with a small
+  always‑visible **toolbar window** in the top‑left; the rest of the screen stays
+  click‑through, so you keep using the desktop.
+- Pick a color (or **Draw** / **Erase**) to start drawing; **Done** or **Esc**
+  releases the tools and hands control back to the desktop.
+- The toolbar windows are draggable by their title bar.
+- The **Cmd** button opens a command window with a text field (`clear`, `help`,
+  `exit`).
 
 ## Notes & Limitations
 
