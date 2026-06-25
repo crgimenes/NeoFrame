@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"image"
 	"image/color"
@@ -10,10 +11,11 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/crgimenes/minigui"
 	"github.com/golang/freetype"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
-	"github.com/hajimehoshi/ebiten/v2/inpututil"
+	"github.com/hajimehoshi/ebiten/v2/text/v2"
 	"golang.org/x/image/font"
 
 	_ "embed"
@@ -35,14 +37,6 @@ type Config struct {
 	oldMouseX        int
 	oldMouseY        int
 	toolsVisible     bool
-}
-
-type button struct {
-	id         string
-	x, y, w, h int
-	icon       image.Image
-	onClick    func(bt *button)
-	tag        string // Additional tag for the button, if needed
 }
 
 const (
@@ -81,13 +75,12 @@ type Leyer struct {
 
 type NeoFrame struct {
 	CFG               *Config
-	buttonBackground  *image.RGBA
-	buttons           []*button
 	colorPalette      []string
 	currentLayer      int
 	currentPaintColor string
 	eraser            bool
 	fontBytes         []byte
+	gui               minigui.Context
 	layer             []Leyer
 	maxHeight         int
 	maxWidth          int
@@ -100,99 +93,94 @@ func (nf *NeoFrame) Layout(outsideWidth, outsideHeight int) (int, int) {
 	return nf.maxWidth, nf.maxHeight
 }
 
-func (nf *NeoFrame) DrawTools() {
-	if !nf.CFG.toolsVisible {
-		nf.buttonBackground = nf.captureBackground(0, 0, nf.maxWidth, nf.maxHeight)
+// openTools reveals the toolbar and grabs the mouse so the panel is clickable.
+func (nf *NeoFrame) openTools() {
+	nf.CFG.toolsVisible = true
+	nf.SetMousePassthrough(false)
+}
 
-		for _, btn := range nf.buttons {
-			nf.CopyImageToScreen(btn.icon, btn.x, btn.y)
+// dismissTools hides the toolbar and returns to click-through with no active tool.
+func (nf *NeoFrame) dismissTools() {
+	nf.CFG.toolsVisible = false
+	nf.paintbrush = false
+	nf.eraser = false
+	nf.SetMousePassthrough(true)
+}
+
+// armTool hides the toolbar but keeps the window grabbing the mouse so the
+// just-selected tool can paint on the canvas.
+func (nf *NeoFrame) armTool() {
+	nf.CFG.toolsVisible = false
+	nf.SetMousePassthrough(false)
+}
+
+// updateTools builds and handles the immediate-mode toolbar for one frame: tool
+// toggles, clear/close and the color palette as swatches.
+func (nf *NeoFrame) updateTools() {
+	nf.gui.Begin(minigui.InputFromEbiten(), 8, 8)
+	nf.gui.SetItemWidth(72)
+
+	if nf.gui.Toggle("draw", "Draw", nf.paintbrush) {
+		nf.paintbrush = true
+		nf.eraser = false
+		nf.armTool()
+	}
+	if nf.gui.Toggle("erase", "Erase", nf.eraser) {
+		nf.eraser = true
+		nf.paintbrush = false
+		nf.armTool()
+	}
+	if nf.gui.Button("clear", "Clear") {
+		nf.Clear()
+		nf.dismissTools()
+	}
+	if nf.gui.Button("close", "Close") {
+		nf.dismissTools()
+	}
+
+	const swatchCols = 4
+	for i, hex := range nf.colorPalette {
+		r, g, b, a, err := RGBAstrToColor(hex)
+		if err != nil {
+			continue
 		}
-		nf.CFG.toolsVisible = true
-	}
-}
-
-func (nf *NeoFrame) HideTools() {
-	if nf.CFG.toolsVisible {
-		nf.restoreBackground(nf.buttonBackground, 0, 0)
-		nf.CFG.toolsVisible = false
-	}
-}
-
-func (nf *NeoFrame) ButtonClick(x, y int) {
-	for _, btn := range nf.buttons {
-		if x >= btn.x && x <= btn.x+btn.w && y >= btn.y && y <= btn.y+btn.h {
-			if inpututil.IsMouseButtonJustReleased(ebiten.MouseButtonLeft) {
-				btn.onClick(btn)
-			}
+		id := minigui.ID(fmt.Sprintf("color_%d", i))
+		if nf.gui.Swatch(id, color.RGBA{r, g, b, a}, hex == nf.currentPaintColor) {
+			nf.currentPaintColor = hex
+			nf.paintbrush = true
+			nf.eraser = false
+			nf.armTool()
+		}
+		if (i+1)%swatchCols != 0 && i != len(nf.colorPalette)-1 {
+			nf.gui.SameLine()
 		}
 	}
-}
 
-func (nf *NeoFrame) captureBackground(x, y, w, h int) *image.RGBA {
-	bg := image.NewRGBA(image.Rect(0, 0, w, h))
-	draw.Draw(
-		bg,
-		bg.Bounds(),
-		nf.layer[nf.currentLayer].img,
-		image.Pt(x, y),
-		draw.Src)
-	return bg
-}
-
-func (nf *NeoFrame) restoreBackground(bg *image.RGBA, x, y int) {
-	draw.Draw(
-		nf.layer[nf.currentLayer].img,
-		bg.Bounds().Add(image.Pt(x, y)),
-		bg, image.Pt(0, 0),
-		draw.Src)
-}
-
-func (nf *NeoFrame) moseOutsideBounds() bool {
-	x, y := ebiten.CursorPosition()
-	for _, btn := range nf.buttons {
-		if x >= btn.x && x <= btn.x+btn.w && y >= btn.y && y <= btn.y+btn.h {
-			return false
-		}
-	}
-	return true
+	nf.gui.End()
 }
 
 func (nf *NeoFrame) Update() error {
 	x, y := ebiten.CursorPosition()
 	nf.mouseX, nf.mouseY = x, y
-	//log.Println("x:", x, "y:", y)
 
 	if ebiten.IsKeyPressed(ebiten.KeyEscape) {
-		nf.SetMousePassthrough(true)
+		nf.dismissTools()
+		nf.CFG.oldMouseX, nf.CFG.oldMouseY = x, y
 		return nil
 	}
 
-	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
-		if (!nf.paintbrush &&
-			!nf.eraser) &&
-			nf.moseOutsideBounds() {
-			nf.HideTools()
-			nf.SetMousePassthrough(true)
-			return nil
-		}
+	// The top-left hot-corner reveals the toolbar.
+	if x < 10 && y < 10 {
+		nf.openTools()
 	}
 
-	if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
+	if nf.CFG.toolsVisible {
+		nf.updateTools()
+	} else if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
+		// Paint only while the toolbar is hidden, so the panel never bakes into
+		// the canvas; the toolbar is an overlay drawn on top in Draw.
 		if nf.paintbrush {
-			/*
-				err := nf.DrawPixel(x, y, "FF0000FF")
-				if err != nil {
-					return err
-				}
-			*/
-
-			err := nf.DrawLine(
-				nf.CFG.oldMouseX,
-				nf.CFG.oldMouseY,
-				x,
-				y,
-				3,
-				nf.currentPaintColor)
+			err := nf.DrawLine(nf.CFG.oldMouseX, nf.CFG.oldMouseY, x, y, 3, nf.currentPaintColor)
 			if err != nil {
 				return err
 			}
@@ -203,17 +191,6 @@ func (nf *NeoFrame) Update() error {
 				return err
 			}
 		}
-
-	}
-
-	nf.ButtonClick(x, y)
-
-	if x < 10 && y < 10 {
-		nf.eraser = false
-		nf.paintbrush = false
-
-		nf.SetMousePassthrough(false)
-		nf.DrawTools()
 	}
 
 	nf.CFG.oldMouseX = x
@@ -223,10 +200,13 @@ func (nf *NeoFrame) Update() error {
 }
 
 func (nf *NeoFrame) Draw(screen *ebiten.Image) {
-	for i := 0; i < len(nf.layer); i++ {
+	for i := range nf.layer {
 		if nf.layer[i].visibl {
 			screen.WritePixels(nf.layer[i].img.Pix)
 		}
+	}
+	if nf.CFG.toolsVisible {
+		nf.gui.Render(screen)
 	}
 }
 
@@ -605,7 +585,6 @@ func (nf *NeoFrame) Run() {
 
 	nf.fontBytes = fontBytes
 	nf.CFG = &Config{}
-	nf.buttons = []*button{}
 	nf.currentPaintColor = ColorRed
 	nf.colorPalette = []string{
 		ColorBlack,
@@ -629,116 +608,9 @@ func (nf *NeoFrame) Run() {
 		ColorTransparent,
 	}
 
-	drawImg, err := LoadImage("assets/draw.png")
-	if err != nil {
-		log.Println("failed to load image:", err)
-		return
-	}
-
-	closeImg, err := LoadImage("assets/close.png")
-	if err != nil {
-		log.Println("failed to load image:", err)
-		return
-	}
-
-	clearImg, err := LoadImage("assets/clear.png")
-	if err != nil {
-		log.Println("failed to load image:", err)
-		return
-	}
-
-	nf.buttons = []*button{
-		{
-			id:   "close",
-			x:    0,
-			y:    64,
-			w:    32,
-			h:    32,
-			icon: closeImg,
-			onClick: func(bt *button) {
-				nf.HideTools()
-				nf.SetMousePassthrough(true)
-				nf.paintbrush = false
-				nf.eraser = false
-			},
-		},
-		{
-			id:   "clear",
-			x:    0,
-			y:    64 + 32,
-			w:    32,
-			h:    32,
-			icon: clearImg,
-			onClick: func(bt *button) {
-				nf.paintbrush = false
-				nf.eraser = !nf.eraser
-				nf.HideTools()
-				nf.SetMousePassthrough(!nf.eraser)
-				if nf.eraser {
-					if ebiten.IsKeyPressed(ebiten.KeyControl) {
-						nf.Clear()
-						nf.eraser = false
-						nf.SetMousePassthrough(true)
-					}
-				}
-			},
-		},
-		{
-			id:   "draw",
-			x:    0,
-			y:    64 + 32*2,
-			w:    32,
-			h:    32,
-			icon: drawImg,
-			onClick: func(bt *button) {
-				nf.eraser = false
-				nf.paintbrush = !nf.paintbrush
-				nf.HideTools()
-				nf.SetMousePassthrough(!nf.paintbrush)
-			},
-		},
-	}
-
-	for i, colorStr := range nf.colorPalette {
-		//x := 32 + (i%4)*32
-		//y := 64 + (i/4)*32
-
-		x := 0
-		y := 64 + 32*3 + (i * 32)
-
-		r, g, b, a, err := RGBAstrToColor(colorStr)
-		if err != nil {
-			log.Printf("Error parsing color %s: %v", colorStr, err)
-			continue
-		}
-		colorRect := image.NewRGBA(image.Rect(0, 0, 32, 32))
-		draw.Draw(
-			colorRect,
-			colorRect.Bounds(),
-			&image.Uniform{color.RGBA{r, g, b, a}},
-			image.Pt(0, 0),
-			draw.Src)
-
-		btn := &button{
-			id:   fmt.Sprintf("color_%d", i),
-			x:    x,
-			y:    y,
-			w:    32,
-			h:    32,
-			tag:  colorStr,
-			icon: colorRect,
-			onClick: func(bt *button) {
-				nf.currentPaintColor = bt.tag
-				if !nf.paintbrush {
-					nf.paintbrush = true
-					nf.eraser = false
-					nf.HideTools()
-					nf.SetMousePassthrough(false)
-				}
-			},
-		}
-		nf.buttons = append(nf.buttons, btn)
-	}
+	// Toolbar font: a system font by default, falling back to the embedded 3270
+	// (always present; also the retro look — see useRetroFont).
+	nf.gui.SetFace(nf.toolbarFace())
 
 	nf.layer = make([]Leyer, 1)
 	nf.layer[0].visibl = true
@@ -775,7 +647,7 @@ func (nf *NeoFrame) Run() {
 	ebiten.SetWindowSize(nf.maxWidth, nf.maxHeight)
 	ebiten.SetWindowTitle(name)
 
-	err = ebiten.RunGameWithOptions(
+	err := ebiten.RunGameWithOptions(
 		nf,
 		&ebiten.RunGameOptions{
 			InitUnfocused:     true,
@@ -787,4 +659,33 @@ func (nf *NeoFrame) Run() {
 	if err != nil {
 		log.Fatal(err)
 	}
+}
+
+// useRetroFont prefers the embedded 3270 font for the toolbar (a retro terminal
+// look); the default is a system font, which also covers non-Latin scripts.
+const useRetroFont = false
+
+// toolbarFace picks the toolbar font: a system font by default, with the embedded
+// 3270 as an opt-in retro face (useRetroFont) and as the guaranteed fallback.
+func (nf *NeoFrame) toolbarFace() minigui.Face {
+	if useRetroFont {
+		if f := embeddedFace(); f != nil {
+			return f
+		}
+	}
+	if f, err := minigui.SystemFace(16); err == nil {
+		return f
+	}
+	return embeddedFace() // the 3270 font is always embedded
+}
+
+// embeddedFace builds a text face from the embedded 3270 font, or returns nil
+// (the toolkit then falls back to Ebitengine's debug font).
+func embeddedFace() minigui.Face {
+	src, err := text.NewGoTextFaceSource(bytes.NewReader(fontBytes))
+	if err != nil {
+		log.Println("toolbar font: parsing embedded 3270:", err)
+		return nil
+	}
+	return &text.GoTextFace{Source: src, Size: 16}
 }
