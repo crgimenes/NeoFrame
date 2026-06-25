@@ -80,7 +80,7 @@ type NeoFrame struct {
 	cmdRect           image.Rectangle
 	cmdStatus         string
 	cmdText           string
-	cmdVisible        bool
+	cmdWin            minigui.Window
 	eraser            bool
 	fontBytes         []byte
 	gui               minigui.Context
@@ -91,91 +91,86 @@ type NeoFrame struct {
 	mouseY            int
 	panelRect         image.Rectangle
 	paintbrush        bool
+	toolWin           minigui.Window
 }
 
 func (nf *NeoFrame) Layout(outsideWidth, outsideHeight int) (int, int) {
 	return nf.maxWidth, nf.maxHeight
 }
 
-// buildTools lays out the always-visible toolbar panel for one frame and records
-// its screen rectangle, so Update can keep it clickable in the click-through
-// overlay (see SetMousePassthrough).
+// buildTools lays out the toolbar and command windows for one frame and records
+// their rectangles, so Update can keep them clickable in the click-through overlay
+// (see SetMousePassthrough). Both windows are draggable by their title bar.
 func (nf *NeoFrame) buildTools() {
-	nf.gui.Begin(minigui.InputFromEbiten(), 8, 8)
-	nf.gui.BeginPanel("NeoFrame", 8, 8)
-	nf.gui.SetItemWidth(80)
+	nf.gui.Begin(minigui.InputFromEbiten(), 0, 0)
 
-	// Draw and Erase are toggles: clicking the active one releases it (like Done).
-	// Entering Draw paints with the current color, which defaults to red and
-	// remembers the last swatch picked.
-	if nf.gui.Toggle("draw", "Draw", nf.paintbrush) {
-		if nf.paintbrush {
+	if nf.gui.BeginWindow(&nf.toolWin) {
+		nf.gui.SetItemWidth(80)
+
+		// Draw and Erase are toggles: clicking the active one releases it (like
+		// Done). Entering Draw paints with the current color, which defaults to red
+		// and remembers the last swatch picked.
+		if nf.gui.Toggle("draw", "Draw", nf.paintbrush) {
+			if nf.paintbrush {
+				nf.releaseTool()
+			} else {
+				nf.paintbrush, nf.eraser = true, false
+			}
+		}
+		if nf.gui.Toggle("erase", "Erase", nf.eraser) {
+			if nf.eraser {
+				nf.releaseTool()
+			} else {
+				nf.eraser, nf.paintbrush = true, false
+			}
+		}
+		if nf.gui.Button("clear", "Clear") {
+			nf.Clear()
+		}
+		if nf.gui.Toggle("cmd", "Cmd", nf.cmdWin.Open) {
+			nf.cmdWin.Open = !nf.cmdWin.Open
+		}
+		if nf.gui.Button("done", "Done") {
 			nf.releaseTool()
-		} else {
-			nf.paintbrush, nf.eraser = true, false
 		}
-	}
-	if nf.gui.Toggle("erase", "Erase", nf.eraser) {
-		if nf.eraser {
-			nf.releaseTool()
-		} else {
-			nf.eraser, nf.paintbrush = true, false
+
+		const swatchCols = 4
+		for i, hex := range nf.colorPalette {
+			r, g, b, a, err := RGBAstrToColor(hex)
+			if err != nil {
+				continue
+			}
+			id := minigui.ID(fmt.Sprintf("color_%d", i))
+			if nf.gui.Swatch(id, color.RGBA{r, g, b, a}, hex == nf.currentPaintColor) {
+				nf.currentPaintColor = hex
+				nf.paintbrush = true
+				nf.eraser = false
+			}
+			if (i+1)%swatchCols != 0 && i != len(nf.colorPalette)-1 {
+				nf.gui.SameLine()
+			}
 		}
-	}
-	if nf.gui.Button("clear", "Clear") {
-		nf.Clear()
-	}
-	if nf.gui.Toggle("cmd", "Cmd", nf.cmdVisible) {
-		nf.cmdVisible = !nf.cmdVisible
-	}
-	if nf.gui.Button("done", "Done") {
-		nf.releaseTool()
+
+		nf.panelRect = nf.gui.EndWindow()
+	} else {
+		nf.panelRect = image.Rectangle{}
 	}
 
-	const swatchCols = 4
-	for i, hex := range nf.colorPalette {
-		r, g, b, a, err := RGBAstrToColor(hex)
-		if err != nil {
-			continue
+	if nf.gui.BeginWindow(&nf.cmdWin) {
+		nf.gui.TextField("cmd", &nf.cmdText)
+		if nf.gui.Button("run", "Run") || nf.gui.Submitted("cmd") {
+			nf.runCommand(nf.cmdText)
+			nf.cmdText = ""
 		}
-		id := minigui.ID(fmt.Sprintf("color_%d", i))
-		if nf.gui.Swatch(id, color.RGBA{r, g, b, a}, hex == nf.currentPaintColor) {
-			nf.currentPaintColor = hex
-			nf.paintbrush = true
-			nf.eraser = false
+		if nf.cmdStatus != "" {
+			nf.gui.Label(nf.cmdStatus)
 		}
-		if (i+1)%swatchCols != 0 && i != len(nf.colorPalette)-1 {
-			nf.gui.SameLine()
-		}
-	}
-
-	nf.panelRect = nf.gui.EndPanel()
-
-	if nf.cmdVisible {
-		nf.buildCmdPanel()
+		nf.cmdRect = nf.gui.EndWindow()
 	} else {
 		nf.cmdRect = image.Rectangle{}
 	}
 
 	nf.gui.End()
-}
-
-// buildCmdPanel lays out the command panel — a text field to type commands into —
-// to the right of the toolbar, and records its rectangle. Pressing Enter or the
-// Run button executes the command.
-func (nf *NeoFrame) buildCmdPanel() {
-	x := float64(nf.panelRect.Max.X + 12)
-	nf.gui.BeginPanel("Commands", x, 8)
-	nf.gui.TextField("cmd", &nf.cmdText)
-	run := nf.gui.Button("run", "Run")
-	if run || nf.gui.Submitted("cmd") {
-		nf.runCommand(nf.cmdText)
-		nf.cmdText = ""
-	}
-	if nf.cmdStatus != "" {
-		nf.gui.Label(nf.cmdStatus)
-	}
-	nf.cmdRect = nf.gui.EndPanel()
 }
 
 // runCommand executes a typed command. The set is intentionally small while the
@@ -218,11 +213,13 @@ func (nf *NeoFrame) Update() error {
 	nf.buildTools()
 
 	tool := nf.paintbrush || nf.eraser
-	overPanel := image.Pt(x, y).In(nf.panelRect) || image.Pt(x, y).In(nf.cmdRect)
+	pt := image.Pt(x, y)
+	overPanel := pt.In(nf.panelRect) || pt.In(nf.cmdRect)
+	dragging := nf.gui.Dragging()
 
-	// Paint only with a tool active and the cursor off the panel, so clicking the
-	// toolbar never leaves a mark on the canvas.
-	if tool && !overPanel && ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
+	// Paint only with a tool active, the cursor off the windows and none being
+	// dragged, so interacting with the UI never leaves a mark on the canvas.
+	if tool && !overPanel && !dragging && ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
 		if nf.paintbrush {
 			err := nf.DrawLine(nf.CFG.oldMouseX, nf.CFG.oldMouseY, x, y, 3, nf.currentPaintColor)
 			if err != nil {
@@ -238,9 +235,10 @@ func (nf *NeoFrame) Update() error {
 	}
 
 	// Dynamic passthrough simulates a per-region hit area on a window-wide flag:
-	// the overlay grabs the mouse while a tool is active or the cursor is over the
-	// panel, and is click-through (desktop usable) otherwise.
-	nf.SetMousePassthrough(!tool && !overPanel)
+	// the overlay grabs the mouse while a tool is active, the cursor is over a
+	// window, or a window is being dragged; otherwise it is click-through.
+	capture := tool || overPanel || dragging
+	nf.SetMousePassthrough(!capture)
 
 	nf.CFG.oldMouseX = x
 	nf.CFG.oldMouseY = y
@@ -661,6 +659,11 @@ func (nf *NeoFrame) Run() {
 	// Toolbar font: a system font by default, falling back to the embedded 3270
 	// (always present; also the retro look — see useRetroFont).
 	nf.gui.SetFace(nf.toolbarFace())
+
+	// The toolbar is always present (no close box); the command window starts
+	// hidden. Both are draggable by their title bar and remember their position.
+	nf.toolWin = minigui.Window{Title: "NeoFrame", X: 8, Y: 8, Open: true, NoClose: true}
+	nf.cmdWin = minigui.Window{Title: "Commands", X: 220, Y: 8, Open: false}
 
 	nf.layer = make([]Leyer, 1)
 	nf.layer[0].visibl = true
