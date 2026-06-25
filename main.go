@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -10,7 +9,6 @@ import (
 
 func main() {
 	log.SetFlags(log.LstdFlags | log.Llongfile)
-	fmt.Println("Starting NeoFrame...")
 
 	nf := &NeoFrame{}
 	nf.CFG = &Config{}
@@ -21,7 +19,6 @@ func main() {
 	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
 		<-c
-		fmt.Println("\nExiting NeoFrame...")
 		os.Exit(0)
 	}()
 

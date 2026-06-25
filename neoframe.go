@@ -129,6 +129,9 @@ func (nf *NeoFrame) buildTools() {
 		}
 		if nf.gui.Toggle("cmd", "Cmd", nf.cmdWin.Open) {
 			nf.cmdWin.Open = !nf.cmdWin.Open
+			if nf.cmdWin.Open {
+				nf.gui.Focus("cmd") // ready to type as soon as the window opens
+			}
 		}
 		if nf.gui.Button("done", "Done") {
 			nf.releaseTool()
