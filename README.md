@@ -19,9 +19,13 @@ A minimal on-screen overlay that creates a transparent, always‑on‑top window
 
 Requirements:
 
-- Go **1.25+** (CGO enabled).
-- macOS: Xcode Command Line Tools; Windows: a recent MinGW toolchain is recommended.
-- Module deps are managed via `go.mod` (Ebitengine v2, FreeType, x/image, readline).
+- Go **1.26+**.
+- No C toolchain on macOS or Windows: Ebitengine v2.10+ talks to the OS through
+  [purego](https://github.com/ebitengine/purego), so `CGO_ENABLED=0` builds
+  natively (no Xcode or MinGW). Linux still requires CGO and the X11 dev
+  libraries, and is not a release target yet.
+- Module deps are managed via `go.mod` (Ebitengine v2.10, FreeType, x/image,
+  readline).
 
 Quick build:
 
@@ -30,7 +34,7 @@ Quick build:
 make build
 
 # Or directly:
-CGO_ENABLED=1 go build -trimpath -ldflags "-s -w" -o nf .
+CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o nf .
 ```
 
 Cross builds (macOS/Windows) are automated by `release.sh` (requires a `GITHUB_TOKEN`; optional Apple Developer ID signing).
