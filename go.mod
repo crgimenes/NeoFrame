@@ -3,14 +3,14 @@ module nf
 go 1.26
 
 require (
-	github.com/crgimenes/minigui v0.0.0-20260625130226-21347b89ceec
+	github.com/crgimenes/minigui v0.1.1
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0
 	github.com/hajimehoshi/ebiten/v2 v2.10.0-alpha.11
 	golang.org/x/image v0.43.0
 )
 
 require (
-	github.com/crgimenes/native v0.0.0-20260624104951-fb41a0e4f845 // indirect
+	github.com/crgimenes/native v0.1.2 // indirect
 	github.com/ebitengine/gomobile v0.0.0-20260211053922-3d992dae95d1 // indirect
 	github.com/ebitengine/hideconsole v1.0.0 // indirect
 	github.com/ebitengine/purego v0.11.0-alpha.5 // indirect

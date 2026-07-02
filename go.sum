@@ -1,7 +1,11 @@
 github.com/crgimenes/minigui v0.0.0-20260625130226-21347b89ceec h1:0MljOJ9zMbJLJDhfym585TTOe3rduQd1FUnyuXul7Gk=
 github.com/crgimenes/minigui v0.0.0-20260625130226-21347b89ceec/go.mod h1:kxuZKJZy+B7QqqdhBrE5gmBSwAlCWzB8+XLQLdhQWaE=
+github.com/crgimenes/minigui v0.1.1 h1:395ggh0oRJ89pf83Wg9i7rgccToFkougRHN1Pd1OurM=
+github.com/crgimenes/minigui v0.1.1/go.mod h1:A9zrO71Tbr6OQF2IvoyG7llcs4s6Wn0ewFUuk6EoRpA=
 github.com/crgimenes/native v0.0.0-20260624104951-fb41a0e4f845 h1:Phrgc2xH6e1ygRiA1U7jCi66fHXbfXioTHbhKBCWKog=
 github.com/crgimenes/native v0.0.0-20260624104951-fb41a0e4f845/go.mod h1:r2iwllKCbmywZTk1MJNtcdur317e4r67J4+Tm29aiVU=
+github.com/crgimenes/native v0.1.2 h1:bPhFipyv6gXhuzawH2ctSNyNEy639oTqDkZQWJfPzH4=
+github.com/crgimenes/native v0.1.2/go.mod h1:r2iwllKCbmywZTk1MJNtcdur317e4r67J4+Tm29aiVU=
 github.com/ebitengine/gomobile v0.0.0-20260211053922-3d992dae95d1 h1:U8WldvN7/4cgo65U2fr2urv43/yhqYOK5FegFPPfI4M=
 github.com/ebitengine/gomobile v0.0.0-20260211053922-3d992dae95d1/go.mod h1:J7sDBRQG9pJGMa9Z+h8l3flwk0yEKDzWeR57vA1LI5U=
 github.com/ebitengine/hideconsole v1.0.0 h1:5J4U0kXF+pv/DhiXt5/lTz0eO5ogJ1iXb8Yj1yReDqE=
