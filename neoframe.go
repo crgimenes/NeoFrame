@@ -12,14 +12,10 @@ import (
 	"strings"
 
 	"github.com/crgimenes/minigui"
-	"github.com/golang/freetype"
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
-	"golang.org/x/image/font"
 
 	_ "embed"
-	_ "image/png"
 )
 
 type Config struct {
@@ -58,7 +54,6 @@ const (
 	ColorLightBlue    = "8080FFFF"
 	ColorLightMagenta = "FF80FFFF"
 	ColorLightCyan    = "80FFFFFF"
-	ColorLightWhite   = "FFFFFFFF"
 	ColorTransparent  = "00000000" // Fully transparent
 )
 
@@ -82,13 +77,10 @@ type NeoFrame struct {
 	cmdText           string
 	cmdWin            minigui.Window
 	eraser            bool
-	fontBytes         []byte
 	gui               minigui.Context
 	layer             []Leyer
 	maxHeight         int
 	maxWidth          int
-	mouseX            int
-	mouseY            int
 	panelRect         image.Rectangle
 	paintbrush        bool
 	toolWin           minigui.Window
@@ -205,7 +197,6 @@ func (nf *NeoFrame) releaseTool() {
 
 func (nf *NeoFrame) Update() error {
 	x, y := ebiten.CursorPosition()
-	nf.mouseX, nf.mouseY = x, y
 
 	if ebiten.IsKeyPressed(ebiten.KeyEscape) {
 		nf.releaseTool()
@@ -258,25 +249,6 @@ func (nf *NeoFrame) Draw(screen *ebiten.Image) {
 	nf.gui.Render(screen)
 }
 
-func (nf *NeoFrame) DebugPrint(str string) {
-	e := ebiten.NewImage(nf.maxWidth, nf.maxHeight)
-	ebitenutil.DebugPrint(e, str)
-	draw.Draw(nf.layer[nf.currentLayer].img, e.Bounds(), e, image.Pt(0, 0), draw.Src)
-}
-
-func RGBAImageToBytes(img *image.RGBA) []byte {
-	bounds := img.Bounds()
-	w, h := bounds.Dx(), bounds.Dy()
-	bytes := make([]byte, 0, w*h*4)
-	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
-		for x := bounds.Min.X; x < bounds.Max.X; x++ {
-			r, g, b, a := img.At(x, y).RGBA()
-			bytes = append(bytes, byte(r>>8), byte(g>>8), byte(b>>8), byte(a>>8))
-		}
-	}
-	return bytes
-}
-
 func RGBAstrToColor(str string) (r, g, b, a uint8, err error) {
 	// RRGGBBAA or RRGGBB
 
@@ -317,71 +289,8 @@ func RGBAstrToColor(str string) (r, g, b, a uint8, err error) {
 	return r, g, b, a, nil
 }
 
-func (nf *NeoFrame) SetBackgroudImage(path string) {
-	img, err := LoadImage(path)
-	if err != nil {
-		log.Println("failed to load image:", err)
-		return
-	}
-
-	nf.layer[nf.currentLayer].img = image.NewRGBA(img.Bounds())
-	draw.Draw(nf.layer[nf.currentLayer].img, img.Bounds(), img, image.Pt(0, 0), draw.Src)
-}
-
-func (nf *NeoFrame) GetScreenSize() (width, height int) {
-	return nf.maxWidth, nf.maxHeight
-}
-
-func (nf *NeoFrame) SetBackgroudImageByData(data []byte) {
-}
-
 func (nf *NeoFrame) Clear() {
 	nf.layer[nf.currentLayer].img = image.NewRGBA(image.Rect(0, 0, nf.maxWidth, nf.maxHeight))
-}
-
-func (nf *NeoFrame) ClearLayer(layer int) {
-	if layer < 0 || layer >= len(nf.layer) {
-		return
-	}
-
-	nf.layer[layer].img = image.NewRGBA(image.Rect(0, 0, nf.maxWidth, nf.maxHeight))
-}
-
-func (nf *NeoFrame) SetLayer(layer int) {
-	if layer < 0 || layer >= len(nf.layer) {
-		return
-	}
-
-	nf.currentLayer = layer
-}
-
-func (nf *NeoFrame) CreateLayer() {
-	nf.layer = append(nf.layer, Leyer{
-		img:    image.NewRGBA(image.Rect(0, 0, nf.maxWidth, nf.maxHeight)),
-		visibl: true,
-	})
-}
-
-func (nf *NeoFrame) DeleteLayer(layer int) {
-	if layer < 0 || layer >= len(nf.layer) {
-		return
-	}
-
-	nf.layer = append(nf.layer[:layer], nf.layer[layer+1:]...)
-}
-
-func LoadImage(file string) (image.Image, error) {
-	f, err := os.Open(file)
-	if err != nil {
-		return nil, err
-	}
-
-	img, _, err := image.Decode(f)
-	if err != nil {
-		return nil, err
-	}
-
-	return img, nil
 }
 
 func (nf *NeoFrame) SetMousePassthrough(enabled bool) {
@@ -390,33 +299,6 @@ func (nf *NeoFrame) SetMousePassthrough(enabled bool) {
 	}
 	nf.CFG.MousePassthrough = enabled
 	ebiten.SetWindowMousePassthrough(enabled)
-}
-
-func (nf *NeoFrame) SetBackgroudImageAt(file string, x, y int) error {
-	img, err := LoadImage(file)
-	if err != nil {
-		return err
-	}
-
-	draw.Draw(nf.layer[nf.currentLayer].img, img.Bounds().Add(image.Pt(x, y)), img, image.Pt(0, 0), draw.Src)
-	return nil
-}
-
-func (nf *NeoFrame) DrawBox(x, y, w, h int, colorstr string) error {
-	r, g, b, a, err := RGBAstrToColor(colorstr)
-	if err != nil {
-		return err
-	}
-
-	c := color.RGBA{r, g, b, a}
-
-	for i := x; i < x+w; i++ {
-		for j := y; j < y+h; j++ {
-			nf.layer[nf.currentLayer].img.Set(i, j, c)
-		}
-	}
-
-	return nil
 }
 
 func (nf *NeoFrame) DrawCircle(x, y, r, thickness int, filled bool, colorstr string) error {
@@ -534,87 +416,6 @@ func (nf *NeoFrame) DrawLine(x1, y1, x2, y2, thickness int, colorstr string) err
 	return nil
 }
 
-func (nf *NeoFrame) DrawText(x, y int, size float64, textstr string, fgColor string) error {
-	// TODO: reimplement using etxt https://github.com/tinne26/etxt
-
-	r, g, b, a, err := RGBAstrToColor(fgColor)
-	if err != nil {
-		return err
-	}
-
-	fg := image.NewUniform(color.RGBA{r, g, b, a})
-
-	f, err := freetype.ParseFont(fontBytes)
-	if err != nil {
-		log.Println(err)
-		return err
-	}
-
-	c := freetype.NewContext()
-	c.SetDPI(72)
-	c.SetFont(f)
-	c.SetFontSize(size)
-	c.SetClip(nf.layer[nf.currentLayer].img.Bounds())
-	c.SetDst(nf.layer[nf.currentLayer].img)
-	c.SetSrc(fg)
-	c.SetHinting(font.HintingFull)
-
-	pt := freetype.Pt(x, y+int(c.PointToFixed(size)>>6))
-	_, err = c.DrawString(textstr, pt)
-
-	return err
-}
-
-func (nf *NeoFrame) DrawPixel(x, y int, colorstr string) error {
-	r, g, b, a, err := RGBAstrToColor(colorstr)
-	if err != nil {
-		return err
-	}
-
-	nf.layer[nf.currentLayer].img.Set(x, y, color.RGBA{r, g, b, a})
-	return nil
-}
-
-func (nf *NeoFrame) DrawGrid(ha, va int, colorstr string) error {
-
-	r, g, b, a, err := RGBAstrToColor(colorstr)
-	if err != nil {
-		return err
-	}
-
-	c := color.RGBA{r, g, b, a}
-
-	// draw horizontal lines
-	for i := 0; i < nf.maxHeight; i += va {
-		for j := 0; j < nf.maxWidth; j++ {
-			nf.layer[nf.currentLayer].img.Set(j, i, c)
-		}
-	}
-
-	// draw vertical lines
-	for i := 0; i < nf.maxWidth; i += ha {
-		for j := 0; j < nf.maxHeight; j++ {
-			nf.layer[nf.currentLayer].img.Set(i, j, c)
-		}
-	}
-
-	return nil
-}
-
-func (nf *NeoFrame) CopyImageToScreen(img image.Image, x, y int) {
-	draw.Draw(
-		nf.layer[nf.currentLayer].img,
-		img.Bounds().Add(image.Pt(x, y)), img, image.Pt(0, 0), draw.Src)
-}
-
-func (nf *NeoFrame) SetWindowTitle(title string) {
-	ebiten.SetWindowTitle(title)
-}
-
-func (nf *NeoFrame) SetWindowPosition(x, y int) {
-	ebiten.SetWindowPosition(x, y)
-}
-
 func (nf *NeoFrame) ConfigureMonitorSize() {
 	maxWidth, maxHeight := ebiten.Monitor().Size()
 	if nf.CFG.WindowWidth == 0 {
@@ -634,7 +435,6 @@ func (nf *NeoFrame) Run() {
 		name = "NeoFrame"
 	)
 
-	nf.fontBytes = fontBytes
 	nf.CFG = &Config{}
 	nf.currentPaintColor = ColorRed
 	nf.colorPalette = []string{
@@ -655,7 +455,6 @@ func (nf *NeoFrame) Run() {
 		ColorLightBlue,
 		ColorLightMagenta,
 		ColorLightCyan,
-		ColorLightWhite,
 		ColorTransparent,
 	}
 
@@ -725,11 +524,13 @@ const useRetroFont = false
 // 3270 as an opt-in retro face (useRetroFont) and as the guaranteed fallback.
 func (nf *NeoFrame) toolbarFace() minigui.Face {
 	if useRetroFont {
-		if f := embeddedFace(); f != nil {
+		f := embeddedFace()
+		if f != nil {
 			return f
 		}
 	}
-	if f, err := minigui.SystemFace(16); err == nil {
+	f, err := minigui.SystemFace(16)
+	if err == nil {
 		return f
 	}
 	return embeddedFace() // the 3270 font is always embedded

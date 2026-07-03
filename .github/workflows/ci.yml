@@ -15,6 +15,7 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - name: Checkout code
@@ -40,12 +41,14 @@ jobs:
             pkg-config
 
       - name: Test
-        run: go test ./...
+        run: go test -count=1 -timeout 120s ./...
 
   cross-build:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     strategy:
+      fail-fast: false
       matrix:
         include:
           - goos: windows

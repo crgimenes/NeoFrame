@@ -10,8 +10,9 @@ A minimal on-screen overlay that creates a transparent, always‑on‑top window
 
 - Transparent, click‑through overlay window (stays above all apps).
 - Always‑visible, draggable toolbar window for tool and color selection.
-- Freehand drawing with color selection and an eraser.
-- In‑app command window (`clear`, `help`, `exit`).
+- Freehand drawing with an 18‑swatch color palette (including a transparent
+  swatch) and an eraser, plus a **Clear** button that wipes the canvas.
+- In‑app command window (`clear`/`cls`, `help`, `exit`/`quit`/`q`).
 - Skips taskbar / dock and uses a window class/name for X11 when available.
 - Auto-detects monitor size on startup.
 
@@ -22,12 +23,13 @@ Requirements:
 - Go **1.26+**.
 - No C toolchain on macOS or Windows: Ebitengine v2.10+ talks to the OS through
   [purego](https://github.com/ebitengine/purego), so `CGO_ENABLED=0` builds
-  natively (no Xcode or MinGW). Linux still requires CGO and the X11 dev
-  libraries, and is not a release target yet.
+  natively (no Xcode or MinGW). Linux requires CGO and the X11 dev libraries;
+  its release binaries are built on native runners by the `release-linux`
+  workflow.
 - Module deps are managed via `go.mod`: Ebitengine v2.10 plus the sibling
-  packages [`minigui`](https://github.com/crgimenes/minigui) (UI toolkit) and
-  [`native`](https://github.com/crgimenes/native) (clipboard), and FreeType and
-  x/image.
+  package [`minigui`](https://github.com/crgimenes/minigui) (UI toolkit), which
+  brings [`native`](https://github.com/crgimenes/native) along for the system
+  clipboard in its text fields.
 
 Quick build:
 
@@ -47,7 +49,7 @@ runtime, stapled) plus the Windows binaries (386/amd64/arm64, CGo‑free), then
 creates the GitHub release. Linux binaries (amd64 + arm64, built with CGO on
 native runners) are produced by the `release-linux` GitHub Actions workflow when
 the release is published. The `ci` workflow tests on Linux and compile‑checks the
-macOS/Windows cross‑builds on every push and pull request.
+macOS/Windows cross‑builds on every push and pull request targeting `trunk`.
 
 Requires `APPLE_DEVELOPER_ID` (a Developer ID Application certificate) and
 `APPLE_NOTARY_PROFILE` (notarytool credentials stored in Keychain). The macOS app
@@ -64,16 +66,18 @@ Behavior:
   always‑visible **toolbar window** in the top‑left; the rest of the screen stays
   click‑through, so you keep using the desktop.
 - Pick a color (or **Draw** / **Erase**) to start drawing; **Done** or **Esc**
-  releases the tools and hands control back to the desktop.
+  releases the tools and hands control back to the desktop. Clicking the active
+  **Draw**/**Erase** toggle also releases it, and **Clear** wipes the canvas.
 - The toolbar windows are draggable by their title bar.
-- The **Cmd** button opens a command window with a text field (`clear`, `help`,
-  `exit`).
+- The **Cmd** button opens a command window with a text field and a **Run**
+  button (Enter also submits): `clear`/`cls`, `help`, `exit`/`quit`/`q`.
 
 ## Notes & Limitations
 
 - Click‑through and transparency depend on platform window APIs; exact behavior may vary between OS versions and, on Linux, between window managers.
-- High‑DPI are expected to work; edge cases may still exist.
-- Multi‑monitor are not supported yet; the overlay appears on the primary display or on the used to start the app.
+- High‑DPI setups are expected to work; edge cases may still exist.
+- Multi‑monitor setups are not supported yet; the overlay appears on the primary
+  display or on the monitor used to start the app.
 
 ## License
 
@@ -83,5 +87,4 @@ BSD 3‑Clause. See [`LICENSE`](LICENSE).
 
 - Ebitengine (Ebiten) v2: https://ebitengine.org
 - Go CGO docs: https://pkg.go.dev/cmd/cgo
-- FreeType for Go: https://pkg.go.dev/github.com/golang/freetype
 
