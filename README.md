@@ -21,11 +21,9 @@ A minimal on-screen overlay that creates a transparent, always‑on‑top window
 Requirements:
 
 - Go **1.26+**.
-- No C toolchain on macOS or Windows: Ebitengine v2.10+ talks to the OS through
+- No C toolchain on any platform: Ebitengine v2.10+ talks to the OS through
   [purego](https://github.com/ebitengine/purego), so `CGO_ENABLED=0` builds
-  natively (no Xcode or MinGW). Linux requires CGO and the X11 dev libraries;
-  its release binaries are built on native runners by the `release-linux`
-  workflow.
+  natively everywhere (no Xcode, MinGW, or X11 dev libraries).
 - Module deps are managed via `go.mod`: Ebitengine v2.10 plus the sibling
   package [`minigui`](https://github.com/crgimenes/minigui) (UI toolkit), which
   brings [`native`](https://github.com/crgimenes/native) along for the system
@@ -45,11 +43,10 @@ CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o nf .
 
 `release.sh` (run on a macOS host, from a clean worktree on a Git tag) builds a
 **signed, notarized macOS universal `.app`** (amd64 + arm64 via `lipo`, hardened
-runtime, stapled) plus the Windows binaries (386/amd64/arm64, CGo‑free), then
-creates the GitHub release. Linux binaries (amd64 + arm64, built with CGO on
-native runners) are produced by the `release-linux` GitHub Actions workflow when
-the release is published. The `ci` workflow tests on Linux and compile‑checks the
-macOS/Windows cross‑builds on every push and pull request targeting `trunk`.
+runtime, stapled) plus the Windows (386/amd64/arm64) and Linux (amd64 + arm64,
+gzipped) binaries, all CGo‑free, then creates the GitHub release. The `ci`
+workflow tests on Linux and compile‑checks the macOS/Windows cross‑builds on
+every push and pull request targeting `trunk`.
 
 Requires `APPLE_DEVELOPER_ID` (a Developer ID Application certificate) and
 `APPLE_NOTARY_PROFILE` (notarytool credentials stored in Keychain). The macOS app
