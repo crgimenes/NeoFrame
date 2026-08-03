@@ -43,7 +43,7 @@ CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o nf .
 
 `release.sh` (run on a macOS host, from a clean worktree on a Git tag) builds a
 **signed, notarized macOS universal `.app`** (amd64 + arm64 via `lipo`, hardened
-runtime, stapled) plus the Windows (386/amd64/arm64) and Linux (amd64 + arm64,
+runtime, stapled) plus the Windows (amd64/arm64) and Linux (amd64 + arm64,
 gzipped) binaries, all CGo‑free, then creates the GitHub release. The `ci`
 workflow tests on Linux and compile‑checks the macOS/Windows cross‑builds on
 every push and pull request targeting `trunk`.
