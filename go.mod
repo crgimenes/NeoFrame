@@ -1,6 +1,6 @@
 module nf
 
-go 1.26.5
+go 1.27
 
 require (
 	github.com/crgimenes/minigui v0.1.9
