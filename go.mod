@@ -3,8 +3,8 @@ module nf
 go 1.27.1
 
 require (
-	github.com/crgimenes/minigui v0.1.10
-	github.com/hajimehoshi/ebiten/v2 v2.10.2
+	github.com/crgimenes/minigui v0.1.11
+	github.com/hajimehoshi/ebiten/v2 v2.10.3
 )
 
 require (
