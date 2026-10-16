@@ -4,7 +4,7 @@ go 1.27.1
 
 require (
 	github.com/crgimenes/minigui v0.1.12
-	github.com/hajimehoshi/ebiten/v2 v2.10.3
+	github.com/hajimehoshi/ebiten/v2 v2.10.5
 )
 
 require (
